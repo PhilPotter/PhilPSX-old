@@ -22,6 +22,49 @@ int main(int argc, char **argv)
 		goto end;
 	}
 	
+	// Set OpenGL context parameters (OpenGL 4.5 core profile with
+	// 8 bits per colour channel
+	if (SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_RED_SIZE: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_GREEN_SIZE: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_BLUE_SIZE: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_ALPHA_SIZE: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_DOUBLE_BUFFER: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_CONTEXT_PROFILE_MASK: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_CONTEXT_MAJOR_VERSION: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_CONTEXT_MINOR_VERSION: %s\n", SDL_GetError());
+		retval = 1;
+		goto cleanup_sdl;
+	}
+	
 	// Create window
 	SDL_Window *philpsxWindow = SDL_CreateWindow(
 			"PhilPSX",
