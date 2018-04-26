@@ -1,2 +1,7 @@
 philpsx_core/*
 philpsx_program/*
+nbproject/*
+dist/*
+build/*
+Makefile
+.dep.inc
