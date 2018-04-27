@@ -7,11 +7,9 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
-/*
- * PhilPSX entry point
- */
+// PhilPSX entry point
 int main(int argc, char **argv)
-{
+{	
 	// variables
 	int retval = 0;
 	
