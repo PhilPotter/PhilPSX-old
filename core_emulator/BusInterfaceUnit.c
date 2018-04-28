@@ -30,7 +30,9 @@ struct BusInterfaceUnit {
     bool transactionInProgress;
 };
 
-// This constructs and returns a new BusInterfaceUnit object
+/*
+ * This constructs and returns a new BusInterfaceUnit object.
+ */
 BusInterfaceUnit *construct_BusInterfaceUnit(R3051 *cpu)
 {
 	// Allocate BusInterfaceUnit struct
@@ -54,37 +56,49 @@ BusInterfaceUnit *construct_BusInterfaceUnit(R3051 *cpu)
 	return biu;
 }
 
-// This destructs a BusInterfaceUnit object
+/*
+ * This destructs a BusInterfaceUnit object.
+ */
 void destruct_BusInterfaceUnit(BusInterfaceUnit *biu)
 {
 	free(biu);
 }
 
-// This function sets the current holder of the bus interface unit.
+/*
+ * This function sets the current holder of the bus interface unit.
+ */
 void BusInterfaceUnit_setHolder(BusInterfaceUnit *biu, int32_t holder)
 {
 	biu->holder = holder;
 }
 
-// This function gets the current holder of the bus interface unit.
+/*
+ * This function gets the current holder of the bus interface unit.
+ */
 int32_t BusInterfaceUnit_getHolder(BusInterfaceUnit *biu)
 {
 	return biu->holder;
 }
 
-// This function marks a transaction as in progress.
+/*
+ * This function marks a transaction as in progress.
+ */
 void BusInterfaceUnit_startTransaction(BusInterfaceUnit *biu)
 {
 	biu->transactionInProgress = true;
 }
 
-// This function ends a transaction.
+/*
+ * This function ends a transaction.
+ */
 void BusInterfaceUnit_stopTransaction(BusInterfaceUnit *biu)
 {
 	biu->transactionInProgress = false;
 }
 
-// This function tells us whether a transaction is ongoing.
+/*
+ * This function tells us whether a transaction is ongoing.
+ */
 bool BusInterfaceUnit_isTransactionInProgress(BusInterfaceUnit *biu)
 {
 	return biu->transactionInProgress;

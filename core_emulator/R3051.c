@@ -15,7 +15,7 @@
 #include "../headers/SystemInterlink.h"
 #include "../headers/math_utils.h"
 
-// Data widths for read and write methods
+// Data widths for read and write functions
 #define PHILPSX_R3051_BYTE 8
 #define PHILPSX_R3051_HALFWORD 16
 #define PHILPSX_R3051_WORD 32
@@ -124,7 +124,7 @@ struct Cache {
 };
 
 /*
- * This constructs and returns a new R3051 object.
+ * This constructs new R3051 object.
  */
 R3051 *construct_R3051(void)
 {
@@ -132,7 +132,7 @@ R3051 *construct_R3051(void)
 	R3051 *cpu = malloc(sizeof(R3051));
 	if (cpu == NULL) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't allocate memory for R3051 "
-				"struct \n");
+				"struct\n");
 		goto end;
 	}
 
@@ -197,8 +197,8 @@ R3051 *construct_R3051(void)
 	cpu->isBranch = false;
 
 	// Reset main chip and Cop0
-	reset();
-	sccp.reset();
+	R3051_reset(cpu);
+	Cop0_reset(cpu->sccp);
 
 	// Normal return:
 	return cpu;
@@ -242,6 +242,14 @@ void destruct_R3051(R3051 *cpu)
 }
 
 /*
+ * This function resets the main processor.
+ */
+void R3051_reset(R3051 *cpu)
+{
+	cpu->programCounter = Cop0_getResetExceptionVector(cpu->sccp);
+}
+
+/*
  * This constructs a MIPSException object.
  */
 static MIPSException *construct_MIPSException(void)
@@ -250,7 +258,7 @@ static MIPSException *construct_MIPSException(void)
 	MIPSException *exception = calloc(1, sizeof(MIPSException));
 	if (exception == NULL) {
 		fprintf(stderr, "PhilPSX: R3051: MIPSException: Couldn't allocate "
-				"memory for R3051 struct \n");
+				"memory for R3051 struct\n");
 		goto end;
 	}
 
@@ -290,7 +298,7 @@ static Cache *construct_Cache(int32_t cacheType)
 	Cache *cache = malloc(sizeof(Cache));
 	if (cache == NULL) {
 		fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
-				"memory for Cache struct \n");
+				"memory for Cache struct\n");
 		goto end;
 	}
 
@@ -301,21 +309,21 @@ static Cache *construct_Cache(int32_t cacheType)
 			cache->cacheData = calloc(4096, sizeof(int8_t));
 			if (cache->cacheData == NULL) {
 				fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
-						"memory for cacheData array \n");
+						"memory for cacheData array\n");
 				goto cleanup_cache;
 			}
 			
 			cache->cacheTag = calloc(256, sizeof(int32_t));
 			if (cache->cacheTag == NULL) {
 				fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
-						"memory for cacheTag array \n");
+						"memory for cacheTag array\n");
 				goto cleanup_cachedata;
 			}
 			
 			cache->cacheValid = calloc(256, sizeof(bool));
 			if (cache->cacheValid == NULL) {
 				fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
-						"memory for cacheValid array \n");
+						"memory for cacheValid array\n");
 				goto cleanup_cachetag;
 			}
 			

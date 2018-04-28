@@ -13,5 +13,6 @@ typedef struct R3051 R3051;
 // Public functions
 R3051 *construct_R3051(void);
 void destruct_R3051(R3051 *cpu);
+void R3051_reset(R3051 *cpu);
 
 #endif
