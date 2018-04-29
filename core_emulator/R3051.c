@@ -37,7 +37,7 @@
 // Cache types
 #define PHILPSX_INSTRUCTION_CACHE 0
 
-// Forward declarations for functions and subcomponents
+// Forward declarations for functions and subcomponents private to this class
 // MIPSException-related stuff:
 typedef struct MIPSException MIPSException;
 static MIPSException *construct_MIPSException(void);

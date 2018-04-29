@@ -16,12 +16,12 @@
  * is responsible for memory management and exceptions.
  */
 struct Cop0 {
-	
+
 	// Register definitions
-    int32_t *copRegisters;
-    
-    // Condition line
-    bool conditionLine;
+	int32_t *copRegisters;
+
+	// Condition line
+	bool conditionLine;
 };
 
 /*

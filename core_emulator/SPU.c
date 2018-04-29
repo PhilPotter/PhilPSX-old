@@ -15,12 +15,12 @@
  * combination with the utility functions provided.
  */
 struct SPU {
-	
+
 	// This stores the link to the interlink object
-    SystemInterlink *system;
-    
-    // This stores all values written by the system to the SPU
-    int8_t *fakeRegisterSpace;
+	SystemInterlink *system;
+
+	// This stores all values written by the system to the SPU
+	int8_t *fakeRegisterSpace;
 };
 
 /*

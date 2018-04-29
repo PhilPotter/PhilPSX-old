@@ -19,15 +19,15 @@
  * by other components for DMA read/write requests.
  */
 struct BusInterfaceUnit {
-	
+
 	// CPU reference
-    R3051 *cpu;
-    
-    // Current holder of BIU
-    int32_t holder;
-    
-    // currently processing transaction
-    bool transactionInProgress;
+	R3051 *cpu;
+
+	// Current holder of BIU
+	int32_t holder;
+
+	// currently processing transaction
+	bool transactionInProgress;
 };
 
 /*
