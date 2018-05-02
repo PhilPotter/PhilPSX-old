@@ -135,6 +135,9 @@ R3051 *construct_R3051(void)
 				"struct\n");
 		goto end;
 	}
+	
+	// Set SystemInterlink reference to NULL
+	cpu->system = NULL;
 
 	// Set component ID
 	cpu->componentId = PHILPSX_COMPONENTS_CPU;

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <SDL2/SDL.h>
+#include "headers/R3051.h"
 
 // PhilPSX entry point
 int main(int argc, char **argv)
@@ -85,6 +86,12 @@ int main(int argc, char **argv)
 		goto cleanup_window;
 	}
 	
+	// Create CPU
+	R3051 *cpu;
+	printf("Address of CPU is: %p\n", cpu);
+	cpu = construct_R3051();
+	printf("Address of CPU is: %p\n", cpu);
+	
 	// Enter event loop just to keep window open
 	SDL_Event myEvent;
 	int waitStatus;
@@ -96,12 +103,16 @@ int main(int argc, char **argv)
 			break;
 		}
 	}
-	
+		
 	if (waitStatus == 0) {
 		fprintf(stderr, "PhilPSX: Couldn't wait on event properly: %s\n", SDL_GetError());
 		retval = 1;
 		goto cleanup_opengl;
 	}
+	
+	// Destroy CPU
+	destruct_R3051(cpu);
+	printf("CPU destroyed\n");
 	
 	// Destroy OpenGL context
 	cleanup_opengl:
