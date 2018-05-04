@@ -37,7 +37,7 @@ BusInterfaceUnit *construct_BusInterfaceUnit(R3051 *cpu)
 {
 	// Allocate BusInterfaceUnit struct
 	BusInterfaceUnit *biu = malloc(sizeof(BusInterfaceUnit));
-	if (biu == NULL) {
+	if (!biu) {
 		fprintf(stderr, "PhilPSX: BusInterfaceUnit: Couldn't allocate memory "
 				"for BusInterfaceUnit struct\n");
 		goto end;

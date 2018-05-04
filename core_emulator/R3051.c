@@ -124,13 +124,13 @@ struct Cache {
 };
 
 /*
- * This constructs new R3051 object.
+ * This constructs a new R3051 object.
  */
 R3051 *construct_R3051(void)
 {
 	// Allocate R3051 struct
 	R3051 *cpu = malloc(sizeof(R3051));
-	if (cpu == NULL) {
+	if (!cpu) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't allocate memory for R3051 "
 				"struct\n");
 		goto end;
@@ -147,7 +147,7 @@ R3051 *construct_R3051(void)
 
 	// Setup registers
 	cpu->generalRegisters = calloc(32, sizeof(int32_t));
-	if (cpu->generalRegisters == NULL) {
+	if (!cpu->generalRegisters) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't allocate memory for general "
 				"registers");
 		goto cleanup_r3051;
@@ -164,33 +164,33 @@ R3051 *construct_R3051(void)
 
 	// Setup co-processors
 	cpu->sccp = construct_Cop0();
-	if (cpu->sccp == NULL) {
+	if (!cpu->sccp) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't construct Cop0");
 		goto cleanup_registers;
 	}
 	cpu->gte = construct_Cop2();
-	if (cpu->gte == NULL) {
+	if (!cpu->gte) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't construct Cop2");
 		goto cleanup_cop0;
 	}
 
 	// Setup bus interface unit
 	cpu->biu = construct_BusInterfaceUnit(cpu);
-	if (cpu->biu == NULL) {
+	if (!cpu->biu) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't construct BusInterfaceUnit");
 		goto cleanup_cop2;
 	}
 
 	// Setup empty exception
 	cpu->exception = construct_MIPSException();
-	if (cpu->exception == NULL) {
+	if (!cpu->exception) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't construct MIPSException");
 		goto cleanup_biu;
 	}
 
 	// Setup instruction cache
 	cpu->instructionCache = construct_Cache(PHILPSX_INSTRUCTION_CACHE);
-	if (cpu->exception == NULL) {
+	if (!cpu->instructionCache) {
 		fprintf(stderr, "PhilPSX: R3051: Couldn't construct instruction cache");
 		goto cleanup_exception;
 	}
@@ -259,7 +259,7 @@ static MIPSException *construct_MIPSException(void)
 {
 	// Allocate MIPSException struct
 	MIPSException *exception = calloc(1, sizeof(MIPSException));
-	if (exception == NULL) {
+	if (!exception) {
 		fprintf(stderr, "PhilPSX: R3051: MIPSException: Couldn't allocate "
 				"memory for R3051 struct\n");
 		goto end;
@@ -299,7 +299,7 @@ static Cache *construct_Cache(int32_t cacheType)
 {
 	// Allocate Cache struct
 	Cache *cache = malloc(sizeof(Cache));
-	if (cache == NULL) {
+	if (!cache) {
 		fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
 				"memory for Cache struct\n");
 		goto end;
@@ -310,21 +310,21 @@ static Cache *construct_Cache(int32_t cacheType)
 		case PHILPSX_INSTRUCTION_CACHE:
 		{
 			cache->cacheData = calloc(4096, sizeof(int8_t));
-			if (cache->cacheData == NULL) {
+			if (!cache->cacheData) {
 				fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
 						"memory for cacheData array\n");
 				goto cleanup_cache;
 			}
 			
 			cache->cacheTag = calloc(256, sizeof(int32_t));
-			if (cache->cacheTag == NULL) {
+			if (!cache->cacheTag) {
 				fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
 						"memory for cacheTag array\n");
 				goto cleanup_cachedata;
 			}
 			
 			cache->cacheValid = calloc(256, sizeof(bool));
-			if (cache->cacheValid == NULL) {
+			if (!cache->cacheValid) {
 				fprintf(stderr, "PhilPSX: R3051: Cache: Couldn't allocate "
 						"memory for cacheValid array\n");
 				goto cleanup_cachetag;

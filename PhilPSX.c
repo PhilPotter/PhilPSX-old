@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 			640,
 			480,
 			SDL_WINDOW_OPENGL);
-	if (philpsxWindow == NULL) {
+	if (!philpsxWindow) {
 		fprintf(stderr, "PhilPSX: Couldn't create window: %s\n", SDL_GetError());
 		retval = 1;
 		goto cleanup_sdl;
@@ -80,7 +80,7 @@ int main(int argc, char **argv)
 	
 	// Create OpenGL context
 	SDL_GLContext philpsxGlContext = SDL_GL_CreateContext(philpsxWindow);
-	if (philpsxGlContext == NULL) {
+	if (!philpsxGlContext) {
 		fprintf(stderr, "PhilPSX: Couldn't create OpenGL context: %s\n", SDL_GetError());
 		retval = 1;
 		goto cleanup_window;

@@ -85,7 +85,7 @@ Cop2 *construct_Cop2(void)
 {
 	// Allocate Cop2 struct
 	Cop2 *gte = malloc(sizeof(Cop2));
-	if (gte == NULL) {
+	if (!gte) {
 		fprintf(stderr, "PhilPSX: Cop2: Couldn't allocate memory for "
 				"Cop2 struct\n");
 		goto end;
@@ -93,13 +93,13 @@ Cop2 *construct_Cop2(void)
 
 	// Setup register arrays
 	gte->controlRegisters = calloc(32, sizeof(int32_t));
-	if (gte->controlRegisters == NULL) {
+	if (!gte->controlRegisters) {
 		fprintf(stderr, "PhilPSX: Cop2: Couldn't allocate memory for "
 				"controlRegisters array\n");
 		goto cleanup_cop2;
 	}
 	gte->dataRegisters = calloc(32, sizeof(int32_t));
-	if (gte->dataRegisters == NULL) {
+	if (!gte->dataRegisters) {
 		fprintf(stderr, "PhilPSX: Cop2: Couldn't allocate memory for "
 				"dataRegisters array\n");
 		goto cleanup_creg;

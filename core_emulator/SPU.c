@@ -30,7 +30,7 @@ SPU *construct_SPU(void)
 {
 	// Allocate SPU struct
 	SPU *spu = malloc(sizeof(SPU));
-	if (spu == NULL) {
+	if (!spu) {
 		fprintf(stderr, "PhilPSX: SPU: Couldn't allocate memory for "
 				"SPU struct\n");
 		goto end;
@@ -38,7 +38,7 @@ SPU *construct_SPU(void)
 	
 	// Allocate memory for fake register space
 	spu->fakeRegisterSpace = calloc(1024, sizeof(int8_t));
-	if (spu->fakeRegisterSpace == NULL) {
+	if (!spu->fakeRegisterSpace) {
 		fprintf(stderr, "PhilPSX: SPU: Couldn't allocate memory for "
 				"fakeRegisterSpace array\n");
 		goto cleanup_spu;

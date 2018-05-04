@@ -31,14 +31,14 @@ Cop0 *construct_Cop0(void)
 {
 	// Allocate Cop0 struct
 	Cop0 *sccp = malloc(sizeof(Cop0));
-	if (sccp == NULL) {
+	if (!sccp) {
 		fprintf(stderr, "PhilPSX: Cop0: Couldn't allocate memory for "
 				"Cop0 struct\n");
 		goto end;
 	}
 	
 	sccp->copRegisters = calloc(32, sizeof(int32_t));
-	if (sccp->copRegisters == NULL) {
+	if (!sccp->copRegisters) {
 		fprintf(stderr, "PhilPSX: Cop0: Couldn't allocate memory for "
 				"copRegisters array\n");
 		goto cleanup_cop0;
