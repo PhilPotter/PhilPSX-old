@@ -6,7 +6,10 @@
  * This behaviour can be disabled by passing a parameter to the constructor.
  * Removing an object will also do the same. Bounds checking is performed
  * in functions that take an index. Thread safety is provided for all
- * operations individually.
+ * operations individually when enabled.
+ * 
+ * The linked list is backed by individual nodes which refer to each other, one
+ * to the next.
  * 
  * LinkedList.h - Copyright Phillip Potter, 2018
  */
@@ -28,6 +31,7 @@ size_t LinkedList_getSize(LinkedList *ll);
 void *LinkedList_addObject(LinkedList *ll, void *object);
 void *LinkedList_addObjectAt(LinkedList *ll, size_t index, void *object);
 void LinkedList_removeObject(LinkedList *ll, size_t index);
+void LinkedList_replaceObject(LinkedList *ll, size_t index, void *object);
 void *LinkedList_getObject(LinkedList *ll, size_t index);
 void LinkedList_wipeAllObjects(LinkedList *ll);
 LinkedList *LinkedList_clone(LinkedList *original);

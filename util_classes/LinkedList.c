@@ -1,11 +1,12 @@
 /*
  * This C file models a simple singly-linked list implementation as a class. It
  * also performs bounds checking where appropriate (when using indexes).
- * Thread safety is provided for all operations individually.
+ * Thread safety is provided for all operations individually when enabled.
  * 
  * LinkedList.c - Copyright Phillip Potter, 2018
  */
 #include <stdbool.h>
+#include <stdint.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,6 +31,9 @@ struct LinkedList {
 	
 	// Pointer to first node of the list
 	ListNode *head;
+	
+	// Pointer to the last node of the list
+	ListNode *end;
 	
 	// Function pointer for destructing objects stored in nodes
 	void (*destructPtr)(void *object);
@@ -86,8 +90,9 @@ LinkedList *construct_LinkedList(void (*destructPtr)(void *object),
 		}
 	}
 	
-	// Set head to NULL as we are currently empty
+	// Set head and end to NULL as we are currently empty
 	ll->head = NULL;
+	ll->end = NULL;
 	
 	// Store object destruct function pointer
 	ll->destructPtr = destructPtr;
@@ -141,7 +146,7 @@ void destruct_LinkedList(LinkedList *ll)
 	
 	// Destroy mutex (if enabled)
 	if (!ll->notThreadSafe) {
-	if (pthread_mutex_destroy(&ll->mutex) != 0) {
+		if (pthread_mutex_destroy(&ll->mutex) != 0) {
 			fprintf(stderr, "PhilPSX: LinkedList: Couldn't destroy the "
 					"pthread_mutex_t object\n");
 		}
@@ -188,16 +193,26 @@ void *LinkedList_addObject(LinkedList *ll, void *object)
 				"LinkedList_addObject\n");
 	}
 	
-	// Get double pointer to head
-	ListNode **toHead = &ll->head;
+	// If end pointer is not NULL then go straight there, else walk the list
+	// with a double pointer - end should only be NULL when we have no elements
+	// anyway, so the while loop never executes in theory
+	ListNode **listWalker;
+	if (ll->end) {
+		// Set double pointer to address of last 'next' pointer in the list
+		listWalker = &ll->end->next;
+	}
+	else {
+		// Set double pointer to head
+		listWalker = &ll->head;
 
-	// Walk list until we get to end
-	while (*toHead)
-		toHead = &(*toHead)->next;
+		// Walk list until we get to end
+		while (*listWalker)
+			listWalker = &(*listWalker)->next;
+	}
 
 	// Add new item to end of list
-	*toHead = construct_ListNode();
-	if (!*toHead) {
+	*listWalker = construct_ListNode();
+	if (!*listWalker) {
 		fprintf(stderr, "PhilPSX: LinkedList: Couldn't allocate memory for "
 				"ListNode struct...\n");
 		object = NULL;
@@ -205,8 +220,11 @@ void *LinkedList_addObject(LinkedList *ll, void *object)
 	}
 
 	// Set object and increment size
-	(*toHead)->object = object;
+	(*listWalker)->object = object;
 	++ll->size;
+	
+	// Set end pointer
+	ll->end = *listWalker;
 	
 	end:
 	// Unlock mutex (if enabled)
@@ -225,11 +243,11 @@ void *LinkedList_addObjectAt(LinkedList *ll, size_t index, void *object)
 	// Lock mutex (if enabled)
 	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
 		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_addObject\n");
+				"LinkedList_addObjectAt\n");
 	}
 	
 	// Check size of list (index == size will mean we are targetting last
-	// position in the list
+	// position in the list)
 	if (index <= ll->size) {
 		
 		// Get double pointer to head
@@ -258,6 +276,10 @@ void *LinkedList_addObjectAt(LinkedList *ll, size_t index, void *object)
 		// Set object and increment size
 		new->object = object;
 		++ll->size;
+		
+		// Set end pointer if needed
+		if (!new->next)
+			ll->end = new;
 	}
 	else {
 		fprintf(stderr, "PhilPSX: LinkedList: Invalid index specified to "
@@ -268,7 +290,7 @@ void *LinkedList_addObjectAt(LinkedList *ll, size_t index, void *object)
 	// Unlock mutex (if enabled)
 	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
 		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_addObject\n");
+				"LinkedList_addObjectAt\n");
 	}
 	return object;
 }
@@ -296,7 +318,7 @@ void LinkedList_removeObject(LinkedList *ll, size_t index)
         for (size_t i = 0; i < index; ++i)
             toHead = &(*toHead)->next;
 
-        // Destruct object (if enabled) and node that head is pointing indirectly to
+        // Destruct object (if enabled)
         ListNode *toDestruct = *toHead;
         *toHead = (*toHead)->next;
 		if (!ll->dontDestructObjects) {
@@ -304,6 +326,21 @@ void LinkedList_removeObject(LinkedList *ll, size_t index)
 				ll->destructPtr(toDestruct->object);
 			else
 				free(toDestruct->object);
+		}
+		
+		// Reset end pointer (if we removed the last node) and
+		// also destruct the node
+		if (!*toHead) {
+			if (ll->head)
+				// In this case toHead points to a next pointer inside the
+				// last struct in the list, so we can calculate the struct
+				// address with offsetof
+				ll->end = (ListNode *)((uintptr_t)toHead - offsetof(ListNode, next));
+			else
+				// In this case toHead points to the head pointer in the
+				// LinkedList struct itself, so offset calculation above would
+				// produce garbage - list is empty so set end to NULL
+				ll->end = NULL;				
 		}
 		destruct_ListNode(toDestruct);
 
@@ -319,6 +356,45 @@ void LinkedList_removeObject(LinkedList *ll, size_t index)
 	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
 		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
 				"LinkedList_removeObject\n");
+	}
+}
+
+/*
+ * This function replaces an object in the linked list.
+ */
+void LinkedList_replaceObject(LinkedList *ll, size_t index, void *object)
+{
+	// Lock mutex (if enabled)
+	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
+		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
+				"LinkedList_replaceObject\n");
+	}
+	
+    // Check index and continue if valid
+    if (index < ll->size)
+    {
+		if (index == ll->size - 1) {
+			// Use end pointer
+			ll->end->object = object;
+		}
+		else {
+			// Iterate from the start
+			ListNode *nodePtr = ll->head;
+			for (size_t i = 0; i < index; ++i)
+				nodePtr = nodePtr->next;
+			
+			nodePtr->object = object;
+		}
+    }
+	else {
+		fprintf(stderr, "PhilPSX: LinkedList: Invalid index specified to "
+				"LinkedList_replaceObject, action not performed\n");
+	}
+	
+	// Unlock mutex (if enabled)
+	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
+		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
+				"LinkedList_replaceObject\n");
 	}
 }
 
@@ -339,13 +415,19 @@ void *LinkedList_getObject(LinkedList *ll, size_t index)
 	// Check index and continue if valid
 	if (index < ll->size)
 	{
-		// Get double pointer to head
-		ListNode **toHead = &ll->head;
-		for (size_t i = 0; i < index; ++i)
-			toHead = &(*toHead)->next;
+		// Check if end item is being requested and shortcut the list walk if so
+		if (index == ll->size - 1) {
+			object = ll->end->object;
+		}
+		else {
+			// Get double pointer to head
+			ListNode **toHead = &ll->head;
+			for (size_t i = 0; i < index; ++i)
+				toHead = &(*toHead)->next;
 
-		// Set return value
-		object = (*toHead)->object;
+			// Set return value
+			object = (*toHead)->object;
+		}
 	}
 	else
 	{
@@ -399,8 +481,9 @@ void LinkedList_wipeAllObjects(LinkedList *ll)
 		destruct_ListNode(toDestruct);
 	}
 	
-	// Set head back to NULL
+	// Set head and end back to NULL
 	ll->head = NULL;
+	ll->end = NULL;
 	
 	// Set size to zero
 	ll->size = 0;
@@ -413,7 +496,7 @@ void LinkedList_wipeAllObjects(LinkedList *ll)
 }
 
 /*
- * This clones a ListNode into another ListNode, replicating its properties
+ * This clones a LinkedList into another LinkedList, replicating its properties
  * such as thread safety and destructor choice. It does NOT clone the objects
  * referenced by each ListNode, but merely copies their pointers. For this
  * reason, it is best to use this with dontDestructObjects enabled to avoid
@@ -459,7 +542,7 @@ LinkedList *LinkedList_clone(LinkedList *original)
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
 	if (!original->notThreadSafe && pthread_mutex_unlock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the souce mutex "
+		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the source mutex "
 				"in LinkedList_clone\n");
 	}
 	
@@ -474,7 +557,7 @@ LinkedList *LinkedList_clone(LinkedList *original)
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
 	if (!original->notThreadSafe && pthread_mutex_unlock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the souce mutex "
+		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the source mutex "
 				"in LinkedList_clone\n");
 	}
 	
