@@ -18,7 +18,7 @@ typedef struct CD CD;
 CD *construct_CD(void);
 void destruct_CD(CD *cd);
 bool CD_isEmpty(CD *cd);
-void CD_loadCD(CD *cd, const char *cdPath);
+bool CD_loadCD(CD *cd, const char *cdPath);
 int8_t CD_readByte(CD *cd, int64_t position);
 
 #endif
