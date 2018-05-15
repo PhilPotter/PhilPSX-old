@@ -84,7 +84,7 @@ struct CDTrack {
 };
 
 /*
- * This function creates an empty CD object with no image bound.
+ * This function constructs an empty CD object with no image bound.
  */
 CD *construct_CD(void)
 {
