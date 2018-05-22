@@ -7,12 +7,14 @@
 #ifndef PHILPSX_BUS_INTERFACE_UNIT_HEADER
 #define PHILPSX_BUS_INTERFACE_UNIT_HEADER
 
-// Includes
+// System includes
 #include <stdint.h>
-#include "R3051.h"
 
 // Typedefs
 typedef struct BusInterfaceUnit BusInterfaceUnit;
+
+// Includes
+#include "R3051.h"
 
 // Public functions
 BusInterfaceUnit *construct_BusInterfaceUnit(R3051 *cpu);

@@ -16,7 +16,7 @@
 #ifndef PHILPSX_LINKEDLIST_HEADER
 #define PHILPSX_LINKEDLIST_HEADER
 
-// Includes
+// System includes
 #include <stdbool.h>
 #include <stddef.h>
 

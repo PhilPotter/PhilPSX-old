@@ -7,7 +7,7 @@
 #ifndef PHILPSX_COP2_HEADER
 #define PHILPSX_COP2_HEADER
 
-// Includes
+// System includes
 #include <stdbool.h>
 #include <stdint.h>
 

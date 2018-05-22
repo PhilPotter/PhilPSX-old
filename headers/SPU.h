@@ -7,12 +7,14 @@
 #ifndef PHILPSX_SPU_HEADER
 #define PHILPSX_SPU_HEADER
 
-// Includes
+// System includes
 #include <stdint.h>
-#include "SystemInterlink.h"
 
 // Typedefs
 typedef struct SPU SPU;
+
+// Includes
+#include "SystemInterlink.h"
 
 // Public functions
 SPU *construct_SPU(void);

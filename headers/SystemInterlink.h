@@ -9,4 +9,7 @@
 // Typedefs
 typedef struct SystemInterlink SystemInterlink;
 
+// Includes
+#include "CDROMDrive.h"
+
 #endif

@@ -8,12 +8,14 @@
 #ifndef PHILPSX_CONTROLLERIO_HEADER
 #define PHILPSX_CONTROLLERIO_HEADER
 
-// Includes
+// System includes
 #include <stdint.h>
-#include "SystemInterlink.h"
 
 // Typedefs
 typedef struct ControllerIO ControllerIO;
+
+// Includes
+#include "SystemInterlink.h"
 
 // Public functions
 ControllerIO *construct_ControllerIO(void);

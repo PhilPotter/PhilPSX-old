@@ -7,7 +7,7 @@
 #ifndef PHILPSX_MATH_UTILS_HEADER
 #define PHILPSX_MATH_UTILS_HEADER
 
-// Includes
+// System includes
 #include <stdint.h>
 
 // Utility functions

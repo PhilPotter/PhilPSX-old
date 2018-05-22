@@ -7,13 +7,15 @@
 #ifndef PHILPSX_CDROMDRIVE_HEADER
 #define PHILPSX_CDROMDRIVE_HEADER
 
-// Includes
+// System includes
 #include <stdbool.h>
 #include <stdint.h>
-#include "SystemInterlink.h"
 
 // Typedefs
 typedef struct CDROMDrive CDROMDrive;
+
+// Includes
+#include "SystemInterlink.h"
 
 // Public functions
 CDROMDrive *construct_CDROMDrive(void);

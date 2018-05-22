@@ -16,7 +16,7 @@
 #ifndef PHILPSX_ARRAYLIST_HEADER
 #define PHILPSX_ARRAYLIST_HEADER
 
-// Includes
+// System includes
 #include <stdbool.h>
 #include <stddef.h>
 

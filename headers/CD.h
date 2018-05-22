@@ -7,7 +7,7 @@
 #ifndef PHILPSX_CD_HEADER
 #define PHILPSX_CD_HEADER
 
-// Includes
+// System includes
 #include <stdbool.h>
 #include <stdint.h>
 
