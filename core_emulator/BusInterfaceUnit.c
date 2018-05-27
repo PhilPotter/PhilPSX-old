@@ -13,10 +13,10 @@
 #include "../headers/Components.h"
 
 /*
- * The R3051 bus interface unit struct models the state of an bus interface unit.
- * The BIU's purpose is for interfacing the CPU with main memory and other 
- * components via a read and write interface. It can also be taken control of 
- * by other components for DMA read/write requests.
+ * The R3051 bus interface unit struct models the state of an bus interface
+ * unit. The BIU's purpose is for interfacing the CPU with main memory and
+ * other components via a read and write interface. It can also be taken
+ * control of by other components for DMA read/write requests.
  */
 struct BusInterfaceUnit {
 

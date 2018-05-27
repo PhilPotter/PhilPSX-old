@@ -480,7 +480,8 @@ void Cop2_writeDataReg(Cop2 *gte, int32_t reg, int32_t value, bool override)
 				// IRGB
 				gte->dataRegisters[9] = (0x1F & value) << 7; // IR1
 				gte->dataRegisters[10] = (0x3E0 & value) << 2; // IR2
-				gte->dataRegisters[11] = logical_rshift((0x7C00 & value), 3); // IR3
+				gte->dataRegisters[11] =
+						logical_rshift((0x7C00 & value), 3); // IR3
 				break;
 			default:
 				gte->dataRegisters[reg] = value;
@@ -501,15 +502,24 @@ static void Cop2_handleRTPS(Cop2 *gte, int32_t opcode)
 	int32_t sf = (opcode & 0x80000) == 0x80000 ? 1 : 0;
 
 	// Retrieve rotation matrix values
-	int64_t rt11 = 0xFFFF & gte->controlRegisters[0]; // RT11
-	int64_t rt12 = 0xFFFF & logical_rshift(gte->controlRegisters[0], 16); // RT12
-	int64_t rt13 = 0xFFFF & gte->controlRegisters[1]; // RT13
-	int64_t rt21 = 0xFFFF & logical_rshift(gte->controlRegisters[1], 16); // RT21
-	int64_t rt22 = 0xFFFF & gte->controlRegisters[2]; // RT22
-	int64_t rt23 = 0xFFFF & logical_rshift(gte->controlRegisters[2], 16); // RT23
-	int64_t rt31 = 0xFFFF & gte->controlRegisters[3]; // RT31
-	int64_t rt32 = 0xFFFF & logical_rshift(gte->controlRegisters[3], 16); // RT32
-	int64_t rt33 = 0xFFFF & gte->controlRegisters[4]; // RT33
+	int64_t rt11 =
+			0xFFFF & gte->controlRegisters[0]; // RT11
+	int64_t rt12 =
+			0xFFFF & logical_rshift(gte->controlRegisters[0], 16); // RT12
+	int64_t rt13 =
+			0xFFFF & gte->controlRegisters[1]; // RT13
+	int64_t rt21 =
+			0xFFFF & logical_rshift(gte->controlRegisters[1], 16); // RT21
+	int64_t rt22 =
+			0xFFFF & gte->controlRegisters[2]; // RT22
+	int64_t rt23 =
+			0xFFFF & logical_rshift(gte->controlRegisters[2], 16); // RT23
+	int64_t rt31 =
+			0xFFFF & gte->controlRegisters[3]; // RT31
+	int64_t rt32 =
+			0xFFFF & logical_rshift(gte->controlRegisters[3], 16); // RT32
+	int64_t rt33 =
+			0xFFFF & gte->controlRegisters[4]; // RT33
 
 	// Sign extend rotation matrix values if necessary
 	if ((rt11 & 0x8000L) == 0x8000L)
@@ -698,10 +708,12 @@ static void Cop2_handleRTPS(Cop2 *gte, int32_t opcode)
 
 		divisionResult = h << z;
 		int64_t d = temp_sz3 << z;
-		int64_t u = unrResults[logical_rshift(((int32_t)d - 0x7FC0), 7)] + 0x101;
+		int64_t u =
+				unrResults[logical_rshift(((int32_t)d - 0x7FC0), 7)] + 0x101;
 		d = logical_rshift((0x2000080 - (d * u)), 8);
 		d = logical_rshift((0x80 + (d * u)), 8);
-		divisionResult = min_value(0x1FFFFL, logical_rshift(((divisionResult * d) + 0x8000L), 16));
+		divisionResult = min_value(0x1FFFFL,
+				logical_rshift(((divisionResult * d) + 0x8000L), 16));
 
 	} else {
 		divisionResult = 0x1FFFFL;
@@ -767,7 +779,8 @@ static void Cop2_handleRTPS(Cop2 *gte, int32_t opcode)
 	// SXY FIFO registers
 	gte->dataRegisters[12] = gte->dataRegisters[13]; // SXY1 to SXY0
 	gte->dataRegisters[13] = gte->dataRegisters[14]; // SXY2 to SXY1
-	gte->dataRegisters[14] = (((int32_t)sy2 & 0xFFFF) << 16) | ((int32_t)sx2 & 0xFFFF); // SXY2
+	gte->dataRegisters[14] =
+			(((int32_t)sy2 & 0xFFFF) << 16) | ((int32_t)sx2 & 0xFFFF); // SXY2
 	gte->dataRegisters[15] = gte->dataRegisters[14]; // SXYP mirror of SXY2
 
 	// MAC0
@@ -1193,7 +1206,8 @@ static void Cop2_handleDPCS(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -1411,7 +1425,8 @@ static void Cop2_handleINTPL(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -1505,37 +1520,64 @@ static void Cop2_handleMVMVA(Cop2 *gte, int32_t opcode)
 			mx22 = 0, mx23 = 0, mx31 = 0, mx32 = 0, mx33 = 0;
 	switch (mMatrix) {
 		case 0: // Rotation matrix
-			mx11 = 0xFFFF & gte->controlRegisters[0]; // RT11;
-			mx12 = 0xFFFF & logical_rshift(gte->controlRegisters[0], 16); // RT12
-			mx13 = 0xFFFF & gte->controlRegisters[1]; // RT13
-			mx21 = 0xFFFF & logical_rshift(gte->controlRegisters[1], 16); // RT21
-			mx22 = 0xFFFF & gte->controlRegisters[2]; // RT22
-			mx23 = 0xFFFF & logical_rshift(gte->controlRegisters[2], 16); // RT23
-			mx31 = 0xFFFF & gte->controlRegisters[3]; // RT31
-			mx32 = 0xFFFF & logical_rshift(gte->controlRegisters[3], 16); // RT32
-			mx33 = 0xFFFF & gte->controlRegisters[4]; // RT33
+			mx11 =
+				0xFFFF & gte->controlRegisters[0]; // RT11;
+			mx12 =
+				0xFFFF & logical_rshift(gte->controlRegisters[0], 16); // RT12
+			mx13 =
+				0xFFFF & gte->controlRegisters[1]; // RT13
+			mx21 =
+				0xFFFF & logical_rshift(gte->controlRegisters[1], 16); // RT21
+			mx22 =
+				0xFFFF & gte->controlRegisters[2]; // RT22
+			mx23 =
+				0xFFFF & logical_rshift(gte->controlRegisters[2], 16); // RT23
+			mx31 =
+				0xFFFF & gte->controlRegisters[3]; // RT31
+			mx32 =
+				0xFFFF & logical_rshift(gte->controlRegisters[3], 16); // RT32
+			mx33 =
+				0xFFFF & gte->controlRegisters[4]; // RT33
 			break;
 		case 1: // Light matrix
-			mx11 = 0xFFFF & gte->controlRegisters[8]; // L11;
-			mx12 = 0xFFFF & logical_rshift(gte->controlRegisters[8], 16); // L12
-			mx13 = 0xFFFF & gte->controlRegisters[9]; // L13
-			mx21 = 0xFFFF & logical_rshift(gte->controlRegisters[9], 16); // L21
-			mx22 = 0xFFFF & gte->controlRegisters[10]; // L22
-			mx23 = 0xFFFF & logical_rshift(gte->controlRegisters[10], 16); // L23
-			mx31 = 0xFFFF & gte->controlRegisters[11]; // L31
-			mx32 = 0xFFFF & logical_rshift(gte->controlRegisters[11], 16); // L32
-			mx33 = 0xFFFF & gte->controlRegisters[12]; // L33
+			mx11 =
+				0xFFFF & gte->controlRegisters[8]; // L11;
+			mx12 =
+				0xFFFF & logical_rshift(gte->controlRegisters[8], 16); // L12
+			mx13 =
+				0xFFFF & gte->controlRegisters[9]; // L13
+			mx21 =
+				0xFFFF & logical_rshift(gte->controlRegisters[9], 16); // L21
+			mx22 =
+				0xFFFF & gte->controlRegisters[10]; // L22
+			mx23 =
+				0xFFFF & logical_rshift(gte->controlRegisters[10], 16); // L23
+			mx31 =
+				0xFFFF & gte->controlRegisters[11]; // L31
+			mx32 =
+				0xFFFF & logical_rshift(gte->controlRegisters[11], 16); // L32
+			mx33 =
+				0xFFFF & gte->controlRegisters[12]; // L33
 			break;
 		case 2: // Colour matrix
-			mx11 = 0xFFFF & gte->controlRegisters[16]; // LR1;
-			mx12 = 0xFFFF & logical_rshift(gte->controlRegisters[16], 16); // LR2
-			mx13 = 0xFFFF & gte->controlRegisters[17]; // LR3
-			mx21 = 0xFFFF & logical_rshift(gte->controlRegisters[17], 16); // LG1
-			mx22 = 0xFFFF & gte->controlRegisters[18]; // LG2
-			mx23 = 0xFFFF & logical_rshift(gte->controlRegisters[18], 16); // LG3
-			mx31 = 0xFFFF & gte->controlRegisters[19]; // LB1
-			mx32 = 0xFFFF & logical_rshift(gte->controlRegisters[19], 16); // LB2
-			mx33 = 0xFFFF & gte->controlRegisters[20]; // LB3
+			mx11 =
+				0xFFFF & gte->controlRegisters[16]; // LR1;
+			mx12 =
+				0xFFFF & logical_rshift(gte->controlRegisters[16], 16); // LR2
+			mx13 =
+				0xFFFF & gte->controlRegisters[17]; // LR3
+			mx21 =
+				0xFFFF & logical_rshift(gte->controlRegisters[17], 16); // LG1
+			mx22 =
+				0xFFFF & gte->controlRegisters[18]; // LG2
+			mx23 =
+				0xFFFF & logical_rshift(gte->controlRegisters[18], 16); // LG3
+			mx31 =
+				0xFFFF & gte->controlRegisters[19]; // LB1
+			mx32 =
+				0xFFFF & logical_rshift(gte->controlRegisters[19], 16); // LB2
+			mx33 =
+				0xFFFF & gte->controlRegisters[20]; // LB3
 			break;
 		case 3: // Reserved (garbage matrix)
 			mx11 = -0x60;
@@ -2113,7 +2155,8 @@ static void Cop2_handleNCDS(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -2436,7 +2479,8 @@ static void Cop2_handleCDP(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -2561,19 +2605,28 @@ static void Cop2_handleNCDT(Cop2 *gte, int32_t opcode)
 		int64_t vxAny = 0, vyAny = 0, vzAny = 0;
 		switch (i) {
 			case 0:
-				vxAny = 0xFFFF & gte->dataRegisters[0]; // VX0
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
-				vzAny = 0xFFFF & gte->dataRegisters[1]; // VZ0
+				vxAny =
+					0xFFFF & gte->dataRegisters[0]; // VX0
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
+				vzAny =
+					0xFFFF & gte->dataRegisters[1]; // VZ0
 				break;
 			case 1:
-				vxAny = 0xFFFF & gte->dataRegisters[2]; // VX1
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
-				vzAny = 0xFFFF & gte->dataRegisters[3]; // VZ1
+				vxAny =
+					0xFFFF & gte->dataRegisters[2]; // VX1
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
+				vzAny =
+					0xFFFF & gte->dataRegisters[3]; // VZ1
 				break;
 			case 2:
-				vxAny = 0xFFFF & gte->dataRegisters[4]; // VX2
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
-				vzAny = 0xFFFF & gte->dataRegisters[5]; // VZ2
+				vxAny =
+					0xFFFF & gte->dataRegisters[4]; // VX2
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
+				vzAny =
+					0xFFFF & gte->dataRegisters[5]; // VZ2
 				break;
 		}
 
@@ -2896,7 +2949,8 @@ static void Cop2_handleNCDT(Cop2 *gte, int32_t opcode)
 
 		gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 		gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-		gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+		gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 	}
 }
 
@@ -3249,7 +3303,8 @@ static void Cop2_handleNCCS(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -3505,7 +3560,8 @@ static void Cop2_handleCC(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -3778,7 +3834,8 @@ static void Cop2_handleNCS(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -3883,19 +3940,28 @@ static void Cop2_handleNCT(Cop2 *gte, int32_t opcode)
 		int64_t vxAny = 0, vyAny = 0, vzAny = 0;
 		switch (i) {
 			case 0:
-				vxAny = 0xFFFF & gte->dataRegisters[0]; // VX0
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
-				vzAny = 0xFFFF & gte->dataRegisters[1]; // VZ0
+				vxAny =
+					0xFFFF & gte->dataRegisters[0]; // VX0
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
+				vzAny =
+					0xFFFF & gte->dataRegisters[1]; // VZ0
 				break;
 			case 1:
-				vxAny = 0xFFFF & gte->dataRegisters[2]; // VX1
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
-				vzAny = 0xFFFF & gte->dataRegisters[3]; // VZ1
+				vxAny =
+					0xFFFF & gte->dataRegisters[2]; // VX1
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
+				vzAny =
+					0xFFFF & gte->dataRegisters[3]; // VZ1
 				break;
 			case 2:
-				vxAny = 0xFFFF & gte->dataRegisters[4]; // VX2
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
-				vzAny = 0xFFFF & gte->dataRegisters[5]; // VZ2
+				vxAny =
+					0xFFFF & gte->dataRegisters[4]; // VX2
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
+				vzAny =
+					0xFFFF & gte->dataRegisters[5]; // VZ2
 				break;
 		}
 
@@ -4079,7 +4145,8 @@ static void Cop2_handleNCT(Cop2 *gte, int32_t opcode)
 
 		gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 		gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-		gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+		gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 	}
 }
 
@@ -4356,7 +4423,8 @@ static void Cop2_handleDCPL(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -4582,7 +4650,8 @@ static void Cop2_handleDPCT(Cop2 *gte, int32_t opcode)
 
 		gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 		gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-		gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+		gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 	}
 }
 
@@ -4689,15 +4758,24 @@ static void Cop2_handleRTPT(Cop2 *gte, int32_t opcode)
 	int32_t lm = (opcode & 0x400) == 0x400 ? 1 : 0;
 
 	// Retrieve rotation matrix values
-	int64_t rt11 = 0xFFFF & gte->controlRegisters[0]; // RT11
-	int64_t rt12 = 0xFFFF & logical_rshift(gte->controlRegisters[0], 16); // RT12
-	int64_t rt13 = 0xFFFF & gte->controlRegisters[1]; // RT13
-	int64_t rt21 = 0xFFFF & logical_rshift(gte->controlRegisters[1], 16); // RT21
-	int64_t rt22 = 0xFFFF & gte->controlRegisters[2]; // RT22
-	int64_t rt23 = 0xFFFF & logical_rshift(gte->controlRegisters[2], 16); // RT23
-	int64_t rt31 = 0xFFFF & gte->controlRegisters[3]; // RT31
-	int64_t rt32 = 0xFFFF & logical_rshift(gte->controlRegisters[3], 16); // RT32
-	int64_t rt33 = 0xFFFF & gte->controlRegisters[4]; // RT33
+	int64_t rt11 =
+			0xFFFF & gte->controlRegisters[0]; // RT11
+	int64_t rt12 =
+			0xFFFF & logical_rshift(gte->controlRegisters[0], 16); // RT12
+	int64_t rt13 =
+			0xFFFF & gte->controlRegisters[1]; // RT13
+	int64_t rt21 =
+			0xFFFF & logical_rshift(gte->controlRegisters[1], 16); // RT21
+	int64_t rt22 =
+			0xFFFF & gte->controlRegisters[2]; // RT22
+	int64_t rt23 =
+			0xFFFF & logical_rshift(gte->controlRegisters[2], 16); // RT23
+	int64_t rt31 =
+			0xFFFF & gte->controlRegisters[3]; // RT31
+	int64_t rt32 =
+			0xFFFF & logical_rshift(gte->controlRegisters[3], 16); // RT32
+	int64_t rt33 =
+			0xFFFF & gte->controlRegisters[4]; // RT33
 
 	// Sign extend rotation matrix values if necessary
 	if ((rt11 & 0x8000L) == 0x8000L)
@@ -4761,19 +4839,28 @@ static void Cop2_handleRTPT(Cop2 *gte, int32_t opcode)
 
 		switch (i) {
 			case 0:
-				vxAny = 0xFFFF & gte->dataRegisters[0]; // VX0
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
-				vzAny = 0xFFFF & gte->dataRegisters[1]; // VZ0
+				vxAny =
+					0xFFFF & gte->dataRegisters[0]; // VX0
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
+				vzAny =
+					0xFFFF & gte->dataRegisters[1]; // VZ0
 				break;
 			case 1:
-				vxAny = 0xFFFF & gte->dataRegisters[2]; // VX1
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
-				vzAny = 0xFFFF & gte->dataRegisters[3]; // VZ1
+				vxAny =
+					0xFFFF & gte->dataRegisters[2]; // VX1
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
+				vzAny =
+					0xFFFF & gte->dataRegisters[3]; // VZ1
 				break;
 			case 2:
-				vxAny = 0xFFFF & gte->dataRegisters[4]; // VX2
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
-				vzAny = 0xFFFF & gte->dataRegisters[5]; // VZ2
+				vxAny =
+					0xFFFF & gte->dataRegisters[4]; // VX2
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
+				vzAny =
+					0xFFFF & gte->dataRegisters[5]; // VZ2
 				break;
 		}
 
@@ -4790,9 +4877,12 @@ static void Cop2_handleRTPT(Cop2 *gte, int32_t opcode)
 		}
 
 		// Perform first stage of calculations
-		int64_t mac1 = trX * 0x1000 + rt11 * vxAny + rt12 * vyAny + rt13 * vzAny;
-		int64_t mac2 = trY * 0x1000 + rt21 * vxAny + rt22 * vyAny + rt23 * vzAny;
-		int64_t mac3 = trZ * 0x1000 + rt31 * vxAny + rt32 * vyAny + rt33 * vzAny;
+		int64_t mac1 =
+				trX * 0x1000 + rt11 * vxAny + rt12 * vyAny + rt13 * vzAny;
+		int64_t mac2 =
+				trY * 0x1000 + rt21 * vxAny + rt22 * vyAny + rt23 * vzAny;
+		int64_t mac3 =
+				trZ * 0x1000 + rt31 * vxAny + rt32 * vyAny + rt33 * vzAny;
 
 		// Shift all three results by (sf * 12), preserving sign bit
 		mac1 = mac1 >> (sf * 12);
@@ -4916,10 +5006,12 @@ static void Cop2_handleRTPT(Cop2 *gte, int32_t opcode)
 
 			divisionResult = h << z;
 			int64_t d = temp_sz3 << z;
-			int64_t u = unrResults[logical_rshift(((int32_t)d - 0x7FC0), 7)] + 0x101;
+			int64_t u =
+				unrResults[logical_rshift(((int32_t)d - 0x7FC0), 7)] + 0x101;
 			d = logical_rshift((0x2000080 - (d * u)), 8);
 			d = logical_rshift((0x80 + (d * u)), 8);
-			divisionResult = min_value(0x1FFFFL, logical_rshift(((divisionResult * d) + 0x8000L), 16));
+			divisionResult = min_value(0x1FFFFL,
+					logical_rshift(((divisionResult * d) + 0x8000L), 16));
 
 		} else {
 			divisionResult = 0x1FFFFL;
@@ -4985,10 +5077,14 @@ static void Cop2_handleRTPT(Cop2 *gte, int32_t opcode)
 
 		// Store values back to correct registers
 		// SXY FIFO registers
-		gte->dataRegisters[12] = gte->dataRegisters[13]; // SXY1 to SXY0
-		gte->dataRegisters[13] = gte->dataRegisters[14]; // SXY2 to SXY1
-		gte->dataRegisters[14] = (((int32_t)sy2 & 0xFFFF) << 16) | ((int32_t)sx2 & 0xFFFF); // SXY2
-		gte->dataRegisters[15] = gte->dataRegisters[14]; // SXYP mirror of SXY2
+		gte->dataRegisters[12] =
+			gte->dataRegisters[13]; // SXY1 to SXY0
+		gte->dataRegisters[13] =
+			gte->dataRegisters[14]; // SXY2 to SXY1
+		gte->dataRegisters[14] =
+			(((int32_t)sy2 & 0xFFFF) << 16) | ((int32_t)sx2 & 0xFFFF); // SXY2
+		gte->dataRegisters[15] =
+			gte->dataRegisters[14]; // SXYP mirror of SXY2
 
 		// MAC0
 		gte->dataRegisters[24] = (int32_t)mac0;
@@ -5138,7 +5234,8 @@ static void Cop2_handleGPF(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -5307,7 +5404,8 @@ static void Cop2_handleGPL(Cop2 *gte, int32_t opcode)
 
 	gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 	gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-	gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+	gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 }
 
 /*
@@ -5412,19 +5510,28 @@ static void Cop2_handleNCCT(Cop2 *gte, int32_t opcode)
 		int64_t vxAny = 0, vyAny = 0, vzAny = 0;
 		switch (i) {
 			case 0:
-				vxAny = 0xFFFF & gte->dataRegisters[0]; // VX0
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
-				vzAny = 0xFFFF & gte->dataRegisters[1]; // VZ0
+				vxAny =
+					0xFFFF & gte->dataRegisters[0]; // VX0
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[0], 16); // VY0
+				vzAny =
+					0xFFFF & gte->dataRegisters[1]; // VZ0
 				break;
 			case 1:
-				vxAny = 0xFFFF & gte->dataRegisters[2]; // VX1
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
-				vzAny = 0xFFFF & gte->dataRegisters[3]; // VZ1
+				vxAny =
+					0xFFFF & gte->dataRegisters[2]; // VX1
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[2], 16); // VY1
+				vzAny =
+					0xFFFF & gte->dataRegisters[3]; // VZ1
 				break;
 			case 2:
-				vxAny = 0xFFFF & gte->dataRegisters[4]; // VX2
-				vyAny = 0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
-				vzAny = 0xFFFF & gte->dataRegisters[5]; // VZ2
+				vxAny =
+					0xFFFF & gte->dataRegisters[4]; // VX2
+				vyAny =
+					0xFFFF & logical_rshift(gte->dataRegisters[4], 16); // VY2
+				vzAny =
+					0xFFFF & gte->dataRegisters[5]; // VZ2
 				break;
 		}
 
@@ -5693,6 +5800,7 @@ static void Cop2_handleNCCT(Cop2 *gte, int32_t opcode)
 
 		gte->dataRegisters[20] = gte->dataRegisters[21]; // RGB1 to RGB0
 		gte->dataRegisters[21] = gte->dataRegisters[22]; // RGB2 to RGB1
-		gte->dataRegisters[22] = (int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
+		gte->dataRegisters[22] =
+			(int32_t)((code << 24) | (bOut << 16) | (gOut << 8) | rOut); // RGB2
 	}
 }

@@ -1,6 +1,7 @@
 /*
  * This header file provides the public API for the SPU (sound chip) of the
- * PlayStation. At the moment, most functionality is stubbed out/not implemented.
+ * PlayStation. At the moment, most functionality is stubbed out/not
+ * implemented.
  * 
  * SPU.h - Copyright Phillip Potter, 2018
  */

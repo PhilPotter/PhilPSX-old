@@ -416,7 +416,8 @@ void ArrayList_wipeAllObjects(ArrayList *al)
 	al->size = 0;
 	
 	// Shrink array back to original size
-	void **tempPtr = realloc(al->dataArray, sizeof(void *) * PHILPSX_ARRAYLIST_INITIAL_SIZE);
+	void **tempPtr = realloc(al->dataArray, sizeof(void *)
+						* PHILPSX_ARRAYLIST_INITIAL_SIZE);
 	if (!tempPtr) {
 		// Contraction failed
 		fprintf(stderr, "PhilPSX: ArrayList: Couldn't shrink array back to "
@@ -489,7 +490,8 @@ ArrayList *ArrayList_clone(ArrayList *original)
 	// Normal return:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe && pthread_mutex_unlock(&original->mutex) != 0) {
+	if (!original->notThreadSafe &&
+			pthread_mutex_unlock(&original->mutex) != 0) {
 		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the source mutex "
 				"in ArrayList_clone\n");
 	}
@@ -504,7 +506,8 @@ ArrayList *ArrayList_clone(ArrayList *original)
 	end:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe && pthread_mutex_unlock(&original->mutex) != 0) {
+	if (!original->notThreadSafe &&
+			pthread_mutex_unlock(&original->mutex) != 0) {
 		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the source mutex "
 				"in ArrayList_clone\n");
 	}
@@ -559,7 +562,8 @@ static bool ArrayList_shrinkIfNeeded(ArrayList *al)
 	
 	// Determine if we need to shrink dataArray
 	size_t proposedSize = al->actualSize / PHILPSX_ARRAYLIST_SCALE_FACTOR;
-	if (al->size <= proposedSize && proposedSize >= PHILPSX_ARRAYLIST_NO_SHRINK_BELOW_SIZE) {
+	if (al->size <= proposedSize &&
+			proposedSize >= PHILPSX_ARRAYLIST_NO_SHRINK_BELOW_SIZE) {
 
 		// dataArray is at threshold, shrink by scale factor
 		void **tempPtr = realloc(al->dataArray, sizeof(void *) * proposedSize);

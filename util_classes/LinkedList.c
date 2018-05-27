@@ -335,7 +335,8 @@ void LinkedList_removeObject(LinkedList *ll, size_t index)
 				// In this case toHead points to a next pointer inside the
 				// last struct in the list, so we can calculate the struct
 				// address with offsetof
-				ll->end = (ListNode *)((uintptr_t)toHead - offsetof(ListNode, next));
+				ll->end = (ListNode *)((uintptr_t)toHead -
+						offsetof(ListNode, next));
 			else
 				// In this case toHead points to the head pointer in the
 				// LinkedList struct itself, so offset calculation above would
@@ -530,7 +531,8 @@ LinkedList *LinkedList_clone(LinkedList *original)
 	size_t originalSize = original->size;
 	void *result;
 	for (size_t i = 0; i < originalSize; ++i) {
-		result = LinkedList_addObject(newList, LinkedList_getObject(original, i));
+		result =
+			LinkedList_addObject(newList, LinkedList_getObject(original, i));
 		if (!result) {
 			fprintf(stderr, "PhilPSX: LinkedList: Copy routine failed in "
 					"LinkedList_clone\n");
@@ -541,7 +543,8 @@ LinkedList *LinkedList_clone(LinkedList *original)
 	// Normal return:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe && pthread_mutex_unlock(&original->mutex) != 0) {
+	if (!original->notThreadSafe &&
+			pthread_mutex_unlock(&original->mutex) != 0) {
 		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the source mutex "
 				"in LinkedList_clone\n");
 	}
@@ -556,7 +559,8 @@ LinkedList *LinkedList_clone(LinkedList *original)
 	end:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe && pthread_mutex_unlock(&original->mutex) != 0) {
+	if (!original->notThreadSafe &&
+			pthread_mutex_unlock(&original->mutex) != 0) {
 		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the source mutex "
 				"in LinkedList_clone\n");
 	}

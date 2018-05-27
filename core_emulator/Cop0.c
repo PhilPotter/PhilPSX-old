@@ -74,10 +74,14 @@ void destruct_Cop0(Cop0 *sccp)
 void Cop0_reset(Cop0 *sccp)
 {
 	sccp->copRegisters[1] = 63 << 8;		// Set random register to 63
-	sccp->copRegisters[12] &= 0xFF9FFFFF;	// Set BEV and TS bits of status register to 0 and 0
-											// (BEV should be 1 but PSX doesn't run this way)
-											// (TS should be 1 but other emus don't seem to do this)
-	sccp->copRegisters[12] &= 0xFFFDFFFC;	// SSSet SWc, KUc and IEc bits of status register to 0
+	sccp->copRegisters[12] &= 0xFF9FFFFF;	// Set BEV and TS bits of status
+											// register to 0 and 0 (BEV should
+											// be 1 but PSX doesn't run this
+											// way)
+											// (TS should be 1 but other emus
+											// don't seem to do this)
+	sccp->copRegisters[12] &= 0xFFFDFFFC;	// Set SWc, KUc and IEc bits of
+											// status register to 0
 
 	sccp->conditionLine = false;
 }
@@ -151,11 +155,14 @@ int32_t Cop0_readReg(Cop0 *sccp, int32_t reg)
 	// Determine which register we are after
 	switch (reg) {
 		case 12: // Status register
-			retVal = sccp->copRegisters[reg] & 0xF27FFF3F; // Mask out 0-read bits
-			//retVal |= 0x00200000; // Merge in TS bit (commented out to copy observed behaviour of other emus)
+			retVal =
+				sccp->copRegisters[reg] & 0xF27FFF3F; // Mask out 0-read bits
+			//retVal |= 0x00200000; // Merge in TS bit (commented out to copy
+									// observed behaviour of other emus)
 			break;
 		case 13: // Cause register
-			retVal = sccp->copRegisters[reg] & 0xB000FF7C; // mask out 0-read bits
+			retVal =
+				sccp->copRegisters[reg] & 0xB000FF7C; // mask out 0-read bits
 			break;
 		case 14: // Exception PC register
 			retVal = sccp->copRegisters[reg];
@@ -191,12 +198,14 @@ void Cop0_writeReg(Cop0 *sccp, int32_t reg, int32_t value, bool override)
 
 		switch (reg) {
 			case 12: // Status register
-				tempVal = sccp->copRegisters[reg] & 0x0DB400C0; // Mask out writable bits
+				tempVal = sccp->copRegisters[reg] & 0x0DB400C0; // Mask out
+																// writable bits
 				value &= 0xF24BFF3F; // Mask out read-only bits
 				sccp->copRegisters[reg] = value | tempVal; // Merge
 				break;
 			case 13: // Cause register
-				tempVal = sccp->copRegisters[reg] & 0xFFFFFCFF; // Mask out writable bits
+				tempVal = sccp->copRegisters[reg] & 0xFFFFFCFF; // Mask out
+																// writable bits
 				value &= 0x00000300; // Mask out read-only bits
 				sccp->copRegisters[reg] &= value | tempVal; // Merge
 				break;
@@ -243,16 +252,20 @@ int32_t Cop0_virtualToPhysical(Cop0 *sccp, int32_t virtualAddress)
 	// Below is the map used in the PS1
 
 	// Make correct modifications to address
-	if (physicalAddress >= 0L && physicalAddress < 0x80000000L) { // kuseg address
+	if (physicalAddress >= 0L &&
+			physicalAddress < 0x80000000L) { // kuseg address
 		// Do nothing
 		;
-	} else if (physicalAddress >= 0x80000000L && physicalAddress < 0xA0000000L) { // kseg0 address
+	} else if (physicalAddress >= 0x80000000L &&
+			physicalAddress < 0xA0000000L) { // kseg0 address
 		// Subtract 0x80000000L
 		physicalAddress -= 0x80000000L;
-	} else if (physicalAddress >= 0xA0000000L && physicalAddress < 0xC0000000L) { // kseg1 address
+	} else if (physicalAddress >= 0xA0000000L &&
+			physicalAddress < 0xC0000000L) { // kseg1 address
 		// Subtract 0xA0000000L
 		physicalAddress -= 0xA0000000L;
-	} else if (physicalAddress >= 0xC0000000L && physicalAddress < 0x100000000L) { // kseg2 address
+	} else if (physicalAddress >= 0xC0000000L &&
+			physicalAddress < 0x100000000L) { // kseg2 address
 		// Do nothing, this only includes cache control on PSX
 		;
 	}
@@ -304,15 +317,16 @@ bool Cop0_userModeOppositeByteOrdering(Cop0 *sccp)
 }
 
 /*
- * This function allows us to check if a virtual address is allowed to be accessed.
- * It is useful for checking if we are attempting to access a prohibited address
- * whilst in user mode.
+ * This function allows us to check if a virtual address is allowed to be
+ * accessed. It is useful for checking if we are attempting to access a
+ * prohibited address whilst in user mode.
  */
 bool Cop0_isAddressAllowed(Cop0 *sccp, int32_t virtualAddress)
 {
 	bool retVal = true;
 
-	if ((virtualAddress & 0x80000000) == 0x80000000 && !Cop0_areWeInKernelMode(sccp))
+	if ((virtualAddress & 0x80000000) == 0x80000000 &&
+			!Cop0_areWeInKernelMode(sccp))
 		retVal = false;
 
 	return retVal;

@@ -51,9 +51,12 @@ static void destruct_Cache(Cache *cache);
 static bool Cache_checkForHit(Cache *cache, int32_t address);
 static int32_t Cache_readWord(Cache *cache, int32_t address);
 static int8_t Cache_readByte(Cache *cache, int32_t address);
-static void Cache_writeWord(Cache *cache, Cop0 *sccp, int32_t address, int32_t value);
-static void Cache_writeByte(Cache *cache, Cop0 *sccp, int32_t address, int8_t value);
-static void Cache_refillLine(Cache *cache, Cop0 *sccp, SystemInterlink *system, int32_t address);
+static void Cache_writeWord(Cache *cache, Cop0 *sccp, int32_t address,
+		int32_t value);
+static void Cache_writeByte(Cache *cache, Cop0 *sccp, int32_t address,
+		int8_t value);
+static void Cache_refillLine(Cache *cache, Cop0 *sccp, SystemInterlink *system,
+		int32_t address);
 
 /*
  * This struct contains registers, and pointers to subcomponents.
@@ -153,7 +156,8 @@ R3051 *construct_R3051(void)
 		goto cleanup_r3051;
 	}
 
-	cpu->generalRegisters[0] = 0;// r1 is fixed at 0 (already 0, here for clarity)
+	cpu->generalRegisters[0] = 0;	// r1 is fixed at 0
+									// (already 0, here for clarity)
 	cpu->programCounter = 0;
 	cpu->hiReg = 0;
 	cpu->loReg = 0;
@@ -378,7 +382,8 @@ static bool Cache_checkForHit(Cache *cache, int32_t address)
 		{
 			int32_t tagIndex = logical_rshift(address, 4) & 0xFF;
 			int32_t expectedTag = logical_rshift(address, 12) & 0xFFFFF;
-			if (cache->cacheTag[tagIndex] == expectedTag && cache->cacheValid[tagIndex])
+			if (cache->cacheTag[tagIndex] ==
+					expectedTag && cache->cacheValid[tagIndex])
 				retVal = true;
 		} break;
 	}
@@ -439,7 +444,8 @@ static int8_t Cache_readByte(Cache *cache, int32_t address)
 /*
  * This function writes the word to the correct address.
  */
-static void Cache_writeWord(Cache *cache, Cop0 *sccp, int32_t address, int32_t value)
+static void Cache_writeWord(Cache *cache, Cop0 *sccp, int32_t address,
+		int32_t value)
 {
 	// Act depending on type of cache
 	switch (cache->cacheType) {
@@ -470,7 +476,8 @@ static void Cache_writeWord(Cache *cache, Cop0 *sccp, int32_t address, int32_t v
  * This function writes the byte to the correct address, and invalidates the
  * correct cache line.
  */
-static void Cache_writeByte(Cache *cache, Cop0 *sccp, int32_t address, int8_t value)
+static void Cache_writeByte(Cache *cache, Cop0 *sccp, int32_t address,
+		int8_t value)
 {
 	// Act depending on type of cache
 	switch (cache->cacheType) {
@@ -496,7 +503,8 @@ static void Cache_writeByte(Cache *cache, Cop0 *sccp, int32_t address, int8_t va
 /*
  * This function refills a cache line using an address.
  */
-static void Cache_refillLine(Cache *cache, Cop0 *sccp, SystemInterlink *system, int32_t address)
+static void Cache_refillLine(Cache *cache, Cop0 *sccp, SystemInterlink *system,
+		int32_t address)
 {
 	// Act according to cache type
 	switch (cache->cacheType) {
@@ -519,7 +527,8 @@ static void Cache_refillLine(Cache *cache, Cop0 *sccp, SystemInterlink *system, 
 			int64_t startingAddress = address & 0xFFFFFFF0L;
 			for (int32_t i = 0; i < 16; ++i) {
 				cache->cacheData[(int32_t)(startingAddress & 0xFFF)] =
-						SystemInterlink_readByte(system, (int32_t)startingAddress);
+						SystemInterlink_readByte(system,
+										(int32_t)startingAddress);
 				++startingAddress;
 			}
 		} break;
