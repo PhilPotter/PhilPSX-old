@@ -9,6 +9,7 @@
 
 // System includes
 #include <stdint.h>
+#include <stdbool.h>
 
 // Typedefs
 typedef struct BusInterfaceUnit BusInterfaceUnit;
