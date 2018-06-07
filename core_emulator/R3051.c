@@ -248,12 +248,84 @@ void destruct_R3051(R3051 *cpu)
 	free(cpu);
 }
 
+void R3051_executeInstructions(R3051 *cpu)
+{
+	
+}
+
+BusInterfaceUnit *R3051_getBiu(R3051 *cpu)
+{
+	return NULL;
+}
+
+Cop0 *R3051_getCop0(R3051 *cpu)
+{
+	return NULL;
+}
+
+Cop2 *R3051_getCop2(R3051 *cpu)
+{
+	return NULL;
+}
+
+int32_t R3051_getHiReg(R3051 *cpu)
+{
+	return 0;
+}
+
+int32_t R3051_getLoReg(R3051 *cpu)
+{
+	return 0;
+}
+
+int32_t R3051_getProgramCounter(R3051 *cpu)
+{
+	return 0;
+}
+
+int32_t R3051_readDataValue(R3051 *cpu, int32_t width, int32_t address)
+{
+	return 0;
+}
+
+int64_t R3051_readInstructionWord(R3051 *cpu, int32_t address,
+		int32_t tempBranchAddress)
+{
+	return 0;
+}
+
+int32_t R3051_readReg(R3051 *cpu, int32_t reg)
+{
+	return 0;
+}
+
 /*
  * This function resets the main processor.
  */
 void R3051_reset(R3051 *cpu)
 {
 	cpu->programCounter = Cop0_getResetExceptionVector(cpu->sccp);
+}
+
+void R3051_setMemoryInterface(R3051 *cpu, SystemInterlink *system)
+{
+	
+}
+
+int32_t R3051_swapWordEndianness(R3051 *cpu, int32_t word)
+{
+	return 0;
+}
+
+void R3051_writeDataValue(R3051 *cpu, int32_t width, int32_t address,
+		int32_t value)
+{
+	
+}
+
+void R3051_writeReg(R3051 *cpu, int32_t reg, int32_t value, bool override)
+{
+	
 }
 
 /*

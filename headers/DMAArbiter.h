@@ -5,7 +5,7 @@
  * DMAArbiter.h - Copyright Phillip Potter, 2018
  */
 #ifndef PHILPSX_DMAARBITER_HEADER
-#define PHILPSX_DMAArbiter_HEADER
+#define PHILPSX_DMAARBITER_HEADER
 
 // System includes
 #include <stdint.h>
