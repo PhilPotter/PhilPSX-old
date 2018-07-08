@@ -10,7 +10,31 @@
 #include "../headers/GPU.h"
 #include "../headers/SystemInterlink.h"
 
-
+// OpenGL shader-specific include directives
+#include "../headers/ogl_shaders/AnyLine_VertexShader1.h"
+#include "../headers/ogl_shaders/AnyLine_FragmentShader1.h"
+#include "../headers/ogl_shaders/DisplayScreen_VertexShader1.h"
+#include "../headers/ogl_shaders/DisplayScreen_FragmentShader1.h"
+#include "../headers/ogl_shaders/GP0_02_VertexShader1.h"
+#include "../headers/ogl_shaders/GP0_02_FragmentShader1.h"
+#include "../headers/ogl_shaders/GP0_80_VertexShader1.h"
+#include "../headers/ogl_shaders/GP0_80_FragmentShader1.h"
+#include "../headers/ogl_shaders/GP0_80_VertexShader2.h"
+#include "../headers/ogl_shaders/GP0_80_FragmentShader2.h"
+#include "../headers/ogl_shaders/GP0_A0_VertexShader1.h"
+#include "../headers/ogl_shaders/GP0_A0_FragmentShader1.h"
+#include "../headers/ogl_shaders/MonochromePolygon_VertexShader1.h"
+#include "../headers/ogl_shaders/MonochromePolygon_FragmentShader1.h"
+#include "../headers/ogl_shaders/MonochromeRectangle_VertexShader1.h"
+#include "../headers/ogl_shaders/MonochromeRectangle_FragmentShader1.h"
+#include "../headers/ogl_shaders/ShadedPolygon_VertexShader1.h"
+#include "../headers/ogl_shaders/ShadedPolygon_FragmentShader1.h"
+#include "../headers/ogl_shaders/ShadedTexturedPolygon_VertexShader1.h"
+#include "../headers/ogl_shaders/ShadedTexturedPolygon_FragmentShader1.h"
+#include "../headers/ogl_shaders/TexturedPolygon_VertexShader1.h"
+#include "../headers/ogl_shaders/TexturedPolygon_FragmentShader1.h"
+#include "../headers/ogl_shaders/TexturedRectangle_VertexShader1.h"
+#include "../headers/ogl_shaders/TexturedRectangle_FragmentShader1.h"
 
 GPU *construct_GPU(void)
 {
