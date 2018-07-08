@@ -5,8 +5,27 @@
  */
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 #include <SDL2/SDL.h>
+#include "headers/R3051.h"
+#include "headers/GPU.h"
+#include "headers/SPU.h"
+#include "headers/CDROMDrive.h"
+#include "headers/DMAArbiter.h"
+#include "headers/ControllerIO.h"
 #include "headers/SystemInterlink.h"
+
+// Declarations of main components
+static R3051 *cpu;
+static GPU *gpu;
+static SPU *spu;
+static CDROMDrive *cdrom;
+static DMAArbiter *dma;
+static ControllerIO *cio;
+static SystemInterlink *smi;
+
+// Forward declarations for functions related to setup:
+static bool setupEmu(int numOfArgs, char **args);
 
 // PhilPSX entry point
 int main(int argc, char **argv)
@@ -86,6 +105,14 @@ int main(int argc, char **argv)
 		goto cleanup_window;
 	}
 	
+	// Setup PlayStation console itself
+	if (!setupEmu(argc - 1, argv + 1)) {
+		fprintf(stderr, "PhilPSX: Couldn't setup virtual PlayStation "
+				"components\n");
+		retval = 1;
+		goto cleanup_opengl;
+	}
+	
 	// Enter event loop just to keep window open
 	SDL_Event myEvent;
 	int waitStatus;
@@ -119,4 +146,146 @@ int main(int argc, char **argv)
 	// End program
 	end:
 	return retval;
+}
+
+static bool setupEmu(int numOfArgs, char **args)
+{
+	// List software name
+	fprintf(stdout, "PhilPSX - a Sony PlayStation 1 Emulator\n");
+
+	// Parse BIOS path from command line arguments
+	bool biosSpecified = false;
+	int biosPathIndex = 0;
+	for (int i = 0; i < numOfArgs; ++i) {
+		if (strlen(args[i]) == 5 && strncmp(args[i], "-bios", 5) == 0) {
+			if (i + 1 < numOfArgs) {
+				biosSpecified = true;
+				biosPathIndex = i + 1;
+				break;
+			}
+		}		
+	}
+	if (!biosSpecified) {
+		fprintf(stderr, "PhilPSX: BIOS file path not provided\n");
+		goto end;
+	}
+
+	// Parse CD path from command line arguments
+	bool cdSpecified = false;
+	int cdPathIndex = 0;
+	for (int i = 0; i < numOfArgs; ++i) {
+		if (strlen(args[i]) == 3 && strncmp(args[i], "-cd", 3) == 0) {
+			if (i + 1 < numOfArgs) {
+				cdSpecified = true;
+				cdPathIndex = i + 1;
+				break;
+			}
+		}
+	}
+
+	// Initialise components
+	cpu = construct_R3051();
+	if (!cpu) {
+		fprintf(stderr, "PhilPSX: R3051 setup failed\n");
+		goto end;
+	}
+	
+	smi = construct_SystemInterlink(args[biosPathIndex]);
+	if (!smi) {
+		fprintf(stderr, "PhilPSX: System Interlink setup failed\n");
+		goto cleanup_cpu;
+	}
+	
+	gpu = construct_GPU();
+	if (!gpu) {
+		fprintf(stderr, "PhilPSX: GPU setup failed\n");
+		goto cleanup_smi;
+	}
+	
+	spu = construct_SPU();
+	if (!spu) {
+		fprintf(stderr, "PhilPSX: SPU setup failed\n");
+		goto cleanup_gpu;
+	}
+	
+	cdrom = construct_CDROMDrive();
+	if (!cdrom) {
+		fprintf(stderr, "PhilPSX: CD-ROM drive setup failed\n");
+		goto cleanup_spu;
+	}
+	
+	dma = construct_DMAArbiter();
+	if (!dma) {
+		fprintf(stderr, "PhilPSX: DMA Arbiter setup failed\n");
+		goto cleanup_cdrom;
+	}
+	
+	cio = construct_ControllerIO();
+	if (!cio) {
+		fprintf(stderr, "PhilPSX: Controller I/O setup failed\n");
+		goto cleanup_dma;
+	}
+	
+	// Link components together and set their parameters
+	
+	// Link necessary components to the interlink
+	SystemInterlink_setCpu(smi, cpu);
+	SystemInterlink_setGpu(smi, gpu);
+	SystemInterlink_setSpu(smi, spu);
+	SystemInterlink_setCdrom(smi, cdrom);
+	SystemInterlink_setDma(smi, dma);
+	SystemInterlink_setControllerIO(smi, cio);
+	
+	// Link interlink back to those components where needed
+	R3051_setMemoryInterface(cpu, smi);
+	GPU_setMemoryInterface(gpu, smi);
+	SPU_setMemoryInterface(spu, smi);
+	CDROMDrive_setMemoryInterface(cdrom, smi);
+	DMAArbiter_setMemoryInterface(dma, smi);
+	ControllerIO_setMemoryInterface(cio, smi);
+	
+	// Now link necessary components to the DMA arbiter
+	DMAArbiter_setCpu(dma, cpu);
+	DMAArbiter_setGpu(dma, gpu);
+	DMAArbiter_setCdrom(dma, cdrom);
+	DMAArbiter_setBiu(dma, R3051_getBiu(cpu));
+	
+	// Set OpenGL info in GPU object (stub for now)
+	GPU_setGLInfo(gpu);
+	
+	// Load CD image if one was specified
+	if (cdSpecified) {
+		if (!CDROMDrive_loadCD(cdrom, args[cdPathIndex])) {
+			fprintf(stderr, "PhilPSX: Loading of CD-ROM image failed\n");
+			goto cleanup_cio;
+		}
+	}
+	
+	// Normal return:
+	return true;
+	
+	// Cleanup path:
+	cleanup_cio:
+	destruct_ControllerIO(cio);
+	
+	cleanup_dma:
+	destruct_DMAArbiter(dma);
+	
+	cleanup_cdrom:
+	destruct_CDROMDrive(cdrom);
+	
+	cleanup_spu:
+	destruct_SPU(spu);
+	
+	cleanup_gpu:
+	destruct_GPU(gpu);
+	
+	cleanup_smi:
+	destruct_SystemInterlink(smi);
+	
+	cleanup_cpu:
+	destruct_R3051(cpu);
+	
+	end:
+	return false;
 }

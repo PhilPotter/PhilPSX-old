@@ -10,6 +10,8 @@
 #include "../headers/GPU.h"
 #include "../headers/SystemInterlink.h"
 
+
+
 GPU *construct_GPU(void)
 {
 	return NULL;

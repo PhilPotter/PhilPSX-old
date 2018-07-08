@@ -2399,7 +2399,8 @@ static bool SystemInterlink_loadBiosFileToMemory(const char *biosPath,
 	}
 	
 	// Display path
-	fprintf(stdout, "BIOS file path is: %s\n", biosPath);
+	fprintf(stdout, "PhilPSX: SystemInterlink: BIOS file path "
+			"is: %s\n", biosPath);
 	
 	// Open BIOS file
 	int biosFileDescriptor = open(biosPath, O_RDONLY);
