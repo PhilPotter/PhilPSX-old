@@ -2,6 +2,9 @@
  * This C file models a simple array list implementation as a class. It
  * also performs bounds checking where appropriate (when using indexes).
  * Thread safety is provided for all operations individually when enabled.
+ * Most pthread errors (other than those related to mutex initialisation) are
+ * not checked for, as it is assumed they cannot occur under the use case for
+ * which this array list was written.
  * 
  * ArrayList.c - Copyright Phillip Potter, 2018
  */
@@ -137,12 +140,8 @@ void destruct_ArrayList(ArrayList *al)
 	}
 	
 	// Destroy mutex (if enabled)
-	if (!al->notThreadSafe) {
-		if (pthread_mutex_destroy(&al->mutex) != 0) {
-			fprintf(stderr, "PhilPSX: ArrayList: Couldn't destroy the "
-					"pthread_mutex_t object\n");
-		}
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_destroy(&al->mutex);
 	
 	// Free dataArray
 	free(al->dataArray);
@@ -160,19 +159,15 @@ size_t ArrayList_getSize(ArrayList *al)
 	size_t size = 0;
 	
 	// Lock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_lock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the mutex in "
-				"ArrayList_getSize\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_lock(&al->mutex);
 	
 	// Store value
 	size = al->size;
 	
 	// Unlock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_unlock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the mutex in "
-				"ArrayList_getSize\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_unlock(&al->mutex);
 	
 	return size;
 }
@@ -183,10 +178,8 @@ size_t ArrayList_getSize(ArrayList *al)
 void *ArrayList_addObject(ArrayList *al, void *object)
 {
 	// Lock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_lock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the mutex in "
-				"ArrayList_addObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_lock(&al->mutex);
 	
 	// Expand list if needed
 	if (!ArrayList_expandIfNeeded(al)) {
@@ -204,10 +197,9 @@ void *ArrayList_addObject(ArrayList *al, void *object)
 	
 	end:
 	// Unlock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_unlock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the mutex in "
-				"ArrayList_addObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_unlock(&al->mutex);
+	
 	return object;
 }
 
@@ -217,10 +209,8 @@ void *ArrayList_addObject(ArrayList *al, void *object)
 void *ArrayList_addObjectAt(ArrayList *al, size_t index, void *object)
 {
 	// Lock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_lock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the mutex in "
-				"ArrayList_addObjectAt\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_lock(&al->mutex);
 	
 	// Check size of list (index == size will mean we are targetting last
 	// position in the array list)
@@ -254,10 +244,9 @@ void *ArrayList_addObjectAt(ArrayList *al, size_t index, void *object)
 	
 	end:
 	// Unlock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_unlock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the mutex in "
-				"ArrayList_addObjectAt\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_unlock(&al->mutex);
+
 	return object;
 }
 
@@ -269,10 +258,8 @@ void *ArrayList_addObjectAt(ArrayList *al, size_t index, void *object)
 void ArrayList_removeObject(ArrayList *al, size_t index)
 {
 	// Lock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_lock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the mutex in "
-				"ArrayList_removeObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_lock(&al->mutex);
 	
     // Check index and continue if valid
     if (index < al->size)
@@ -312,10 +299,8 @@ void ArrayList_removeObject(ArrayList *al, size_t index)
 	}
 	
 	// Unlock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_unlock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the mutex in "
-				"ArrayList_removeObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_unlock(&al->mutex);
 }
 
 /*
@@ -324,10 +309,8 @@ void ArrayList_removeObject(ArrayList *al, size_t index)
 void ArrayList_replaceObject(ArrayList *al, size_t index, void *object)
 {
 	// Lock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_lock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the mutex in "
-				"ArrayList_replaceObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_lock(&al->mutex);
 	
     // Check index and continue if valid
     if (index < al->size)
@@ -340,10 +323,8 @@ void ArrayList_replaceObject(ArrayList *al, size_t index, void *object)
 	}
 	
 	// Unlock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_unlock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the mutex in "
-				"ArrayList_replaceObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_unlock(&al->mutex);
 }
 
 /*
@@ -355,10 +336,8 @@ void *ArrayList_getObject(ArrayList *al, size_t index)
 	void *object = NULL;
 	
 	// Lock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_lock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the mutex in "
-				"ArrayList_getObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_lock(&al->mutex);
 	
 	// Check index and continue if valid
 	if (index < al->size)
@@ -373,10 +352,8 @@ void *ArrayList_getObject(ArrayList *al, size_t index)
 	}
 	
 	// Unlock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_unlock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the mutex in "
-				"ArrayList_getObject\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_unlock(&al->mutex);
 
 	// return
 	return object;
@@ -390,10 +367,8 @@ void *ArrayList_getObject(ArrayList *al, size_t index)
 void ArrayList_wipeAllObjects(ArrayList *al)
 {
 	// Lock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_lock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the mutex in "
-				"ArrayList_wipeAllObjects\n");
-	}
+	if (!al->notThreadSafe)
+		pthread_mutex_lock(&al->mutex);
 
 	// Walk list, cleaning up as we go
 	for (size_t i = 0; i < al->size; ++i) {
@@ -430,10 +405,8 @@ void ArrayList_wipeAllObjects(ArrayList *al)
 	}
 	
 	// Unlock mutex (if enabled)
-	if (!al->notThreadSafe && pthread_mutex_unlock(&al->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the mutex in "
-				"ArrayList_wipeAllObjects\n");
-	} 
+	if (!al->notThreadSafe)
+		pthread_mutex_unlock(&al->mutex);
 }
 
 /*
@@ -447,10 +420,8 @@ ArrayList *ArrayList_clone(ArrayList *original)
 {
 	// Lock source mutex (if enabled), and store original notThreadSafe value
 	bool notThreadSafe = original->notThreadSafe;
-	if (!original->notThreadSafe && pthread_mutex_lock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't lock the source mutex "
-				"in ArrayList_clone\n");
-	}
+	if (!original->notThreadSafe)
+		pthread_mutex_lock(&original->mutex);
 	
 	// Set original temporarily to not thread safe so following calls do not
 	// try and lock the mutex and lock the thread forever (if thread safety is
@@ -490,11 +461,8 @@ ArrayList *ArrayList_clone(ArrayList *original)
 	// Normal return:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe &&
-			pthread_mutex_unlock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the source mutex "
-				"in ArrayList_clone\n");
-	}
+	if (!original->notThreadSafe)
+		pthread_mutex_unlock(&original->mutex);
 	
 	return newList;
 	
@@ -506,11 +474,8 @@ ArrayList *ArrayList_clone(ArrayList *original)
 	end:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe &&
-			pthread_mutex_unlock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: ArrayList: Couldn't unlock the source mutex "
-				"in ArrayList_clone\n");
-	}
+	if (!original->notThreadSafe)
+		pthread_mutex_unlock(&original->mutex);
 	
 	return newList;
 }

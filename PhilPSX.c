@@ -1,12 +1,18 @@
 /*
- * This file starts the emulator off at present.
+ * This file starts the emulator off at present. Only pthread init functions
+ * are checked for errors, as it is assumed all others can't fail given the
+ * use cases of this code.
  * 
  * PhilPSX.c - Copyright Phillip Potter, 2018
  */
+#include <pthread.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include <SDL2/SDL.h>
+#include "headers/WorkQueue.h"
+#include "headers/GpuCommand.h"
 #include "headers/R3051.h"
 #include "headers/GPU.h"
 #include "headers/SPU.h"
@@ -15,129 +21,186 @@
 #include "headers/ControllerIO.h"
 #include "headers/SystemInterlink.h"
 
-// Declarations of main components
-static R3051 *cpu;
-static GPU *gpu;
-static SPU *spu;
-static CDROMDrive *cdrom;
-static DMAArbiter *dma;
-static ControllerIO *cio;
-static SystemInterlink *smi;
+/*
+ * This struct stores references to all emulated components.
+ */
+typedef struct {
+	R3051 *cpu;
+	GPU *gpu;
+	SPU *spu;
+	CDROMDrive *cdrom;
+	DMAArbiter *dma;
+	ControllerIO *cio;
+	SystemInterlink *smi;
+} Console;
 
-// Forward declarations for functions related to setup:
-static bool setupEmu(int numOfArgs, char **args);
+/*
+ * This struct stores refences to SDL objects.
+ */
+typedef struct {
+	SDL_Window *window;
+	SDL_GLContext context;
+} SDLState;
+
+typedef struct {
+	Console *console;
+	SDLState *sdl;
+	WorkQueue *wq;
+	pthread_mutex_t quitMutex;
+	bool quitBool;
+	pthread_t renderingThread;
+	pthread_t emulatorThread;
+} EmulatorState;
+
+// Forward declarations for functions related to setup/cleanup of emulator:
+static bool setupEmu(Console *console, int numOfArgs, char **args);
+static void cleanupEmu(Console *console);
+static void *renderingFunction(void *arg);
+static void *emulatorFunction(void *arg);
+static bool setupSDL(void);
 
 // PhilPSX entry point
 int main(int argc, char **argv)
-{	
+{
+	// List software name
+	fprintf(stdout, "PhilPSX - a Sony PlayStation 1 Emulator\n");
+
 	// variables
 	int retval = 0;
 	
 	// Setup SDL
-	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
-		fprintf(stderr, "PhilPSX: Error starting SDL: %s\n", SDL_GetError());
+	if (!setupSDL()) {
+		fprintf(stderr, "PhilPSX: Setting up SDL failed\n");
 		retval = 1;
 		goto end;
 	}
 	
-	// Set OpenGL context parameters (OpenGL 4.5 core profile with
-	// 8 bits per colour channel
-	if (SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_RED_SIZE: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
-	if (SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_GREEN_SIZE: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
-	if (SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_BLUE_SIZE: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
-	if (SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_ALPHA_SIZE: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
-	if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_DOUBLE_BUFFER: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
-	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_CONTEXT_PROFILE_MASK: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
-	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_CONTEXT_MAJOR_VERSION: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
-	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5) != 0) {
-		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_CONTEXT_MINOR_VERSION: %s\n", SDL_GetError());
-		retval = 1;
-		goto cleanup_sdl;
-	}
+	// Define SDLState object
+	SDLState sdl;
 	
 	// Create window
-	SDL_Window *philpsxWindow = SDL_CreateWindow(
+	sdl.window = SDL_CreateWindow(
 			"PhilPSX",
 			SDL_WINDOWPOS_CENTERED,
 			SDL_WINDOWPOS_CENTERED,
 			640,
 			480,
 			SDL_WINDOW_OPENGL);
-	if (!philpsxWindow) {
-		fprintf(stderr, "PhilPSX: Couldn't create window: %s\n", SDL_GetError());
+	if (!sdl.window) {
+		fprintf(stderr, "PhilPSX: Couldn't create window: %s\n",
+				SDL_GetError());
 		retval = 1;
 		goto cleanup_sdl;
 	}
 	
-	// Create OpenGL context
-	SDL_GLContext philpsxGlContext = SDL_GL_CreateContext(philpsxWindow);
-	if (!philpsxGlContext) {
-		fprintf(stderr, "PhilPSX: Couldn't create OpenGL context: %s\n", SDL_GetError());
+	// Setup OpenGL context
+	sdl.context = SDL_GL_CreateContext(sdl.window);
+	if (!sdl.context) {
+		fprintf(stderr, "PhilPSX: Couldn't create OpenGL context: %s\n",
+				SDL_GetError());
 		retval = 1;
 		goto cleanup_window;
 	}
 	
-	// Setup PlayStation console itself
-	if (!setupEmu(argc - 1, argv + 1)) {
-		fprintf(stderr, "PhilPSX: Couldn't setup virtual PlayStation "
-				"components\n");
+	// Setup console itself
+	Console console;
+	if (!setupEmu(&console, argc - 1, argv + 1)) {
+		fprintf(stderr, "PhilPSX: Couldn't create console\n");
 		retval = 1;
-		goto cleanup_opengl;
+		goto cleanup_context;
+	}
+	
+	// Define emulator state holder to reference multiple objects from the
+	// same struct - this makes passing state to threads without using global
+	// variables easier
+	EmulatorState es;
+	es.console = &console;
+	es.sdl = &sdl;
+	es.quitBool = false;
+	es.wq = construct_WorkQueue();
+	if (!es.wq) {
+		fprintf(stderr, "PhilPSX: Couldn't initialise work queue\n");
+		goto cleanup_console;
+	}
+	if (pthread_mutex_init(&es.quitMutex, NULL)) {
+		fprintf(stderr, "PhilPSX: Couldn't initialise quitMutex\n");
+		goto cleanup_workqueue;
+	}
+	
+	// Create threads, preparing a quit event to push in case they fail
+	SDL_Event quitEvent;
+	quitEvent.type = SDL_QUIT;
+	if (pthread_create(&es.renderingThread, NULL, &renderingFunction, &es)) {
+		fprintf(stderr, "PhilPSX: Couldn't start rendering thread\n");
+		if (SDL_PushEvent(&quitEvent) != 1) {
+			fprintf(stderr, "PhilPSX: Couldn't push quit event to event "
+							"loop: %s\n", SDL_GetError());
+		}
+	}
+	if (pthread_create(&es.emulatorThread, NULL, &emulatorFunction, &es)) {
+		fprintf(stderr, "PhilPSX: Couldn't start emulator thread\n");
+		if (SDL_PushEvent(&quitEvent) != 1) {
+			fprintf(stderr, "PhilPSX: Couldn't push quit event to event "
+							"loop: %s\n", SDL_GetError());
+		}
 	}
 	
 	// Enter event loop just to keep window open
 	SDL_Event myEvent;
 	int waitStatus;
-	bool exit = false;
-	while ((waitStatus = SDL_WaitEvent(&myEvent)) && !exit) {
+	while (waitStatus = SDL_WaitEvent(&myEvent)) {
 		switch (myEvent.type) {
 		case SDL_QUIT:
-			exit = true;
+			// End threads
+			pthread_mutex_lock(&es.quitMutex);
+			es.quitBool = true;
+			pthread_mutex_unlock(&es.quitMutex);
+			goto end_waitevent;
 			break;
 		}
 	}
-		
+	end_waitevent:
+	// This marker is here to jump out of the event loop and prevent any
+	// other events after SDL_QUIT from being processed - they are not
+	// relevant as we want to end the program
+
+	// Check wait didn't end on an error condition
 	if (waitStatus == 0) {
-		fprintf(stderr, "PhilPSX: Couldn't wait on event properly: %s\n", SDL_GetError());
+		fprintf(stderr, "PhilPSX: Couldn't wait on event properly: %s\n",
+				SDL_GetError());
 		retval = 1;
-		goto cleanup_opengl;
 	}
 	
-	// Destroy OpenGL context
-	cleanup_opengl:
-	SDL_GL_DeleteContext(philpsxGlContext);
+	// Wait on both threads to end
+	pthread_join(es.renderingThread, NULL);
+	pthread_join(es.emulatorThread, NULL);
+	
+	// Regain OpenGL context
+	if (SDL_GL_MakeCurrent(sdl.window, sdl.context)) {
+		fprintf(stderr, "PhilPSX: Switching OpenGL context back to main "
+						"thread failed: %s\n", SDL_GetError());
+		// We don't do anything else here as we are ending anyway,
+		// so not much we can do
+	}
+	
+	// Destroy quit mutex
+	pthread_mutex_destroy(&es.quitMutex);
+	
+	// Cleanup work queue
+	cleanup_workqueue:
+	destruct_WorkQueue(es.wq);
+	
+	// Cleanup console
+	cleanup_console:
+	cleanupEmu(&console);
+	
+	// Cleanup OpenGL context
+	cleanup_context:
+	SDL_GL_DeleteContext(sdl.context);
 	
 	// Destroy window
 	cleanup_window:
-	SDL_DestroyWindow(philpsxWindow);
+	SDL_DestroyWindow(sdl.window);
 
 	// Shutdown SDL
 	cleanup_sdl:
@@ -145,14 +208,16 @@ int main(int argc, char **argv)
 	
 	// End program
 	end:
+	fprintf(stdout, "PhilPSX: Terminating main thread\n");
 	return retval;
 }
 
-static bool setupEmu(int numOfArgs, char **args)
+/*
+ * This sets up all the components of the virtual PlayStation and links them
+ * together properly.
+ */
+static bool setupEmu(Console *console, int numOfArgs, char **args)
 {
-	// List software name
-	fprintf(stdout, "PhilPSX - a Sony PlayStation 1 Emulator\n");
-
 	// Parse BIOS path from command line arguments
 	bool biosSpecified = false;
 	int biosPathIndex = 0;
@@ -184,107 +249,300 @@ static bool setupEmu(int numOfArgs, char **args)
 	}
 
 	// Initialise components
-	cpu = construct_R3051();
-	if (!cpu) {
+	// CPU
+	console->cpu = construct_R3051();
+	if (!console->cpu) {
 		fprintf(stderr, "PhilPSX: R3051 setup failed\n");
 		goto end;
 	}
 	
-	smi = construct_SystemInterlink(args[biosPathIndex]);
-	if (!smi) {
+	// SystemInterlink
+	console->smi = construct_SystemInterlink(args[biosPathIndex]);
+	if (!console->smi) {
 		fprintf(stderr, "PhilPSX: System Interlink setup failed\n");
 		goto cleanup_cpu;
 	}
 	
-	gpu = construct_GPU();
-	if (!gpu) {
+	// GPU
+	console->gpu = construct_GPU();
+	if (!console->gpu) {
 		fprintf(stderr, "PhilPSX: GPU setup failed\n");
 		goto cleanup_smi;
 	}
 	
-	spu = construct_SPU();
-	if (!spu) {
-		fprintf(stderr, "PhilPSX: SPU setup failed\n");
+	// Set OpenGL state
+	GPU_setGLFunctionPointers(console->gpu);
+	if (!GPU_initGL(console->gpu)) {
+		fprintf(stderr, "PhilPSX: GPU GL setup failed\n");
 		goto cleanup_gpu;
 	}
 	
-	cdrom = construct_CDROMDrive();
-	if (!cdrom) {
+	// SPU
+	console->spu = construct_SPU();
+	if (!console->spu) {
+		fprintf(stderr, "PhilPSX: SPU setup failed\n");
+		goto cleanup_gl;
+	}
+	
+	// CDROMDrive
+	console->cdrom = construct_CDROMDrive();
+	if (!console->cdrom) {
 		fprintf(stderr, "PhilPSX: CD-ROM drive setup failed\n");
 		goto cleanup_spu;
 	}
-	
-	dma = construct_DMAArbiter();
-	if (!dma) {
+		
+	// DMAArbiter
+	console->dma = construct_DMAArbiter();
+	if (!console->dma) {
 		fprintf(stderr, "PhilPSX: DMA Arbiter setup failed\n");
 		goto cleanup_cdrom;
 	}
 	
-	cio = construct_ControllerIO();
-	if (!cio) {
+	// ControllerIO
+	console->cio = construct_ControllerIO();
+	if (!console->cio) {
 		fprintf(stderr, "PhilPSX: Controller I/O setup failed\n");
 		goto cleanup_dma;
+	}
+	
+	// Load CD image if one was specified
+	if (cdSpecified) {
+		if (!CDROMDrive_loadCD(console->cdrom, args[cdPathIndex])) {
+			fprintf(stderr, "PhilPSX: Loading of CD-ROM image failed\n");
+			goto cleanup_cio;
+		}
 	}
 	
 	// Link components together and set their parameters
 	
 	// Link necessary components to the interlink
-	SystemInterlink_setCpu(smi, cpu);
-	SystemInterlink_setGpu(smi, gpu);
-	SystemInterlink_setSpu(smi, spu);
-	SystemInterlink_setCdrom(smi, cdrom);
-	SystemInterlink_setDma(smi, dma);
-	SystemInterlink_setControllerIO(smi, cio);
+	SystemInterlink_setCpu(console->smi, console->cpu);
+	SystemInterlink_setGpu(console->smi, console->gpu);
+	SystemInterlink_setSpu(console->smi, console->spu);
+	SystemInterlink_setCdrom(console->smi, console->cdrom);
+	SystemInterlink_setDma(console->smi, console->dma);
+	SystemInterlink_setControllerIO(console->smi, console->cio);
 	
 	// Link interlink back to those components where needed
-	R3051_setMemoryInterface(cpu, smi);
-	GPU_setMemoryInterface(gpu, smi);
-	SPU_setMemoryInterface(spu, smi);
-	CDROMDrive_setMemoryInterface(cdrom, smi);
-	DMAArbiter_setMemoryInterface(dma, smi);
-	ControllerIO_setMemoryInterface(cio, smi);
+	R3051_setMemoryInterface(console->cpu, console->smi);
+	GPU_setMemoryInterface(console->gpu, console->smi);
+	SPU_setMemoryInterface(console->spu, console->smi);
+	CDROMDrive_setMemoryInterface(console->cdrom, console->smi);
+	DMAArbiter_setMemoryInterface(console->dma, console->smi);
+	ControllerIO_setMemoryInterface(console->cio, console->smi);
 	
 	// Now link necessary components to the DMA arbiter
-	DMAArbiter_setCpu(dma, cpu);
-	DMAArbiter_setGpu(dma, gpu);
-	DMAArbiter_setCdrom(dma, cdrom);
-	DMAArbiter_setBiu(dma, R3051_getBiu(cpu));
-	
-	// Set OpenGL info in GPU object (stub for now)
-	GPU_setGLInfo(gpu);
-	
-	// Load CD image if one was specified
-	if (cdSpecified) {
-		if (!CDROMDrive_loadCD(cdrom, args[cdPathIndex])) {
-			fprintf(stderr, "PhilPSX: Loading of CD-ROM image failed\n");
-			goto cleanup_cio;
-		}
-	}
+	DMAArbiter_setCpu(console->dma, console->cpu);
+	DMAArbiter_setGpu(console->dma, console->gpu);
+	DMAArbiter_setCdrom(console->dma, console->cdrom);
+	DMAArbiter_setBiu(console->dma, R3051_getBiu(console->cpu));
 	
 	// Normal return:
 	return true;
 	
 	// Cleanup path:
 	cleanup_cio:
-	destruct_ControllerIO(cio);
+	destruct_ControllerIO(console->cio);
 	
 	cleanup_dma:
-	destruct_DMAArbiter(dma);
+	destruct_DMAArbiter(console->dma);
 	
 	cleanup_cdrom:
-	destruct_CDROMDrive(cdrom);
+	destruct_CDROMDrive(console->cdrom);
 	
 	cleanup_spu:
-	destruct_SPU(spu);
+	destruct_SPU(console->spu);
+	
+	cleanup_gl:
+	GPU_cleanupGL(console->gpu);
 	
 	cleanup_gpu:
-	destruct_GPU(gpu);
+	destruct_GPU(console->gpu);
 	
 	cleanup_smi:
-	destruct_SystemInterlink(smi);
+	destruct_SystemInterlink(console->smi);
 	
 	cleanup_cpu:
-	destruct_R3051(cpu);
+	destruct_R3051(console->cpu);
+	
+	end:
+	return false;
+}
+
+/*
+ * This cleans up all the resources associated with the virtual PlayStation.
+ */
+static void cleanupEmu(Console *console)
+{
+	// Cleanup resources - the CD image is cleaned up automatically
+	// by its destructor if present
+	destruct_ControllerIO(console->cio);
+	destruct_DMAArbiter(console->dma);
+	destruct_CDROMDrive(console->cdrom);
+	destruct_SPU(console->spu);
+	GPU_cleanupGL(console->gpu);
+	destruct_GPU(console->gpu);
+	destruct_SystemInterlink(console->smi);
+	destruct_R3051(console->cpu);
+}
+
+/*
+ * This function is intended to be called in a dedicated thread, and handles
+ * the execution of work items from the emulator thread.
+ */
+static void *renderingFunction(void *arg)
+{
+	// Announce entry
+	fprintf(stdout, "PhilPSX: Started rendering thread\n");
+
+	// Cast void argument back to objects
+	EmulatorState *es = arg;
+	Console *console = es->console;
+	SDLState *sdl = es->sdl;
+	WorkQueue *wq = es->wq;
+	
+	// Declare local bool for quitting rendering loop
+	bool renderQuit;
+		 
+	// Make the OpenGL context current on this thread
+	if (SDL_GL_MakeCurrent(sdl->window, sdl->context)) {
+		fprintf(stderr, "PhilPSX: Switching OpenGL context to rendering "
+						"thread failed: %s\n", SDL_GetError());
+		
+		// Send quit event to main loop
+		SDL_Event quitEvent;
+		quitEvent.type = SDL_QUIT;
+		if (SDL_PushEvent(&quitEvent) != 1) {
+			fprintf(stderr, "PhilPSX: Couldn't push quit event to event "
+							"loop: %s\n", SDL_GetError());
+		}
+		fprintf(stderr, "PhilPSX: Ended rendering thread due to errors\n");
+		return NULL;
+	}
+	
+	// Now listen on work queue and keep executing items
+	while (true) {
+		
+		// Check if we need to quit
+		pthread_mutex_lock(&es->quitMutex);
+		renderQuit = es->quitBool;
+		pthread_mutex_unlock(&es->quitMutex);
+		if (renderQuit)
+			goto end;
+		
+		// Check for items in work queue
+		GpuCommand *command = WorkQueue_waitForItem(wq);
+		WorkQueue_returnItem(wq, command);
+	}
+	
+	end:
+	fprintf(stdout, "PhilPSX: Ended rendering thread\n");
+	return NULL;
+}
+
+/*
+ * This function is intended to be called in a dedicated thread, to initialise
+ * the emulator's components and begin executing the PlayStation software.
+ */
+static void *emulatorFunction(void *arg)
+{
+	// Announce entry
+	fprintf(stdout, "PhilPSX: Started emulator thread\n");
+
+	// Cast void argument back to objects
+	EmulatorState *es = arg;
+	Console *console = es->console;
+	WorkQueue *wq = es->wq;
+
+	// Declare local bool for quitting rendering loop
+	bool emulatorQuit;
+	
+	// Enter emulation loop
+	int32_t count = 0;
+	while (true) {
+		
+		// Check if we need to quit
+		pthread_mutex_lock(&es->quitMutex);
+		emulatorQuit = es->quitBool;
+		pthread_mutex_unlock(&es->quitMutex);
+		if (emulatorQuit)
+			goto end;
+		
+		// Move the emulator on by one block of R3051 instructions
+		R3051_executeInstructions(console->cpu);
+	}
+	
+	end:
+	fprintf(stdout, "PhilPSX: Ended emulator thread\n");
+	
+	// Set work queue to stop processing and notify
+	WorkQueue_endProcessingByRenderingThread(wq);
+	
+	return NULL;
+}
+
+/*
+ * This function initialises SDL and sets the properties for the OpenGL
+ * context we are going to create.
+ */
+static bool setupSDL(void)
+{
+	// Setup SDL
+	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+		fprintf(stderr, "PhilPSX: Error starting SDL: %s\n", SDL_GetError());
+		goto end;
+	}
+	
+	// Set OpenGL context parameters (OpenGL 4.5 core profile with
+	// 8 bits per colour channel
+	if (SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_RED_SIZE: "
+				"%s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_GREEN_SIZE: "
+				"%s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_BLUE_SIZE: "
+				"%s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_ALPHA_SIZE: "
+				"%s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute SDL_GL_DOUBLE_BUFFER: "
+				"%s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,
+			SDL_GL_CONTEXT_PROFILE_CORE) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute "
+				"SDL_GL_CONTEXT_PROFILE_MASK: %s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute "
+				"SDL_GL_CONTEXT_MAJOR_VERSION: %s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5) != 0) {
+		fprintf(stderr, "PhilPSX: Couldn't set attribute "
+				"SDL_GL_CONTEXT_MINOR_VERSION: %s\n", SDL_GetError());
+		goto cleanup_sdl;
+	}
+	
+	// Normal return:
+	return true;
+	
+	// Cleanup path:
+	cleanup_sdl:
+	SDL_Quit();
 	
 	end:
 	return false;

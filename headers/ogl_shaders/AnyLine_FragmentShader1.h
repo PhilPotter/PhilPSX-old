@@ -58,7 +58,7 @@ static const char *GPU_getAnyLine_FragmentShader1Source(void)
 	"		// Declare dither pixel as signed int vector as otherwise\n"
 	"		// calculations will be off\n"
 	"		ivec3 ditherPixel = ivec3(int(linePixel.r),\n"
-	"								int(linePixel.g),\n,"
+	"								int(linePixel.g),\n"
 	"								int(linePixel.b));\n"
 	"\n"
 	"		// Define dither offset array\n"

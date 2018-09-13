@@ -2,6 +2,9 @@
  * This C file models a simple singly-linked list implementation as a class. It
  * also performs bounds checking where appropriate (when using indexes).
  * Thread safety is provided for all operations individually when enabled.
+ * Most pthread errors (other than those related to mutex initialisation) are
+ * not checked for, as it is assumed they cannot occur under the use case for
+ * which this linked list was written.
  * 
  * LinkedList.c - Copyright Phillip Potter, 2018
  */
@@ -145,12 +148,8 @@ void destruct_LinkedList(LinkedList *ll)
 	}
 	
 	// Destroy mutex (if enabled)
-	if (!ll->notThreadSafe) {
-		if (pthread_mutex_destroy(&ll->mutex) != 0) {
-			fprintf(stderr, "PhilPSX: LinkedList: Couldn't destroy the "
-					"pthread_mutex_t object\n");
-		}
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_destroy(&ll->mutex);
 
 	// Free LinkedList struct itself
 	free(ll);
@@ -165,19 +164,15 @@ size_t LinkedList_getSize(LinkedList *ll)
 	size_t size = 0;
 	
 	// Lock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_getSize\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_lock(&ll->mutex);
 	
 	// Store value
 	size = ll->size;
 	
 	// Unlock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_getSize\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_unlock(&ll->mutex);
 	
 	return size;
 }
@@ -188,10 +183,8 @@ size_t LinkedList_getSize(LinkedList *ll)
 void *LinkedList_addObject(LinkedList *ll, void *object)
 {
 	// Lock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_addObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_lock(&ll->mutex);
 	
 	// If end pointer is not NULL then go straight there, else walk the list
 	// with a double pointer - end should only be NULL when we have no elements
@@ -228,10 +221,9 @@ void *LinkedList_addObject(LinkedList *ll, void *object)
 	
 	end:
 	// Unlock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_addObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_unlock(&ll->mutex);
+
 	return object;
 }
 
@@ -241,10 +233,8 @@ void *LinkedList_addObject(LinkedList *ll, void *object)
 void *LinkedList_addObjectAt(LinkedList *ll, size_t index, void *object)
 {
 	// Lock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_addObjectAt\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_lock(&ll->mutex);
 	
 	// Check size of list (index == size will mean we are targetting last
 	// position in the list)
@@ -288,10 +278,9 @@ void *LinkedList_addObjectAt(LinkedList *ll, size_t index, void *object)
 	
 	end:
 	// Unlock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_addObjectAt\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_unlock(&ll->mutex);
+
 	return object;
 }
 
@@ -303,10 +292,8 @@ void *LinkedList_addObjectAt(LinkedList *ll, size_t index, void *object)
 void LinkedList_removeObject(LinkedList *ll, size_t index)
 {
 	// Lock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_removeObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_lock(&ll->mutex);
 	
     // Check index and continue if valid
     if (index < ll->size)
@@ -354,10 +341,8 @@ void LinkedList_removeObject(LinkedList *ll, size_t index)
 	}
 	
 	// Unlock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_removeObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_unlock(&ll->mutex);
 }
 
 /*
@@ -366,10 +351,8 @@ void LinkedList_removeObject(LinkedList *ll, size_t index)
 void LinkedList_replaceObject(LinkedList *ll, size_t index, void *object)
 {
 	// Lock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_replaceObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_lock(&ll->mutex);
 	
     // Check index and continue if valid
     if (index < ll->size)
@@ -393,10 +376,8 @@ void LinkedList_replaceObject(LinkedList *ll, size_t index, void *object)
 	}
 	
 	// Unlock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_replaceObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_unlock(&ll->mutex);
 }
 
 /*
@@ -408,10 +389,8 @@ void *LinkedList_getObject(LinkedList *ll, size_t index)
 	void *object = NULL;
 	
 	// Lock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_getObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_lock(&ll->mutex);
 	
 	// Check index and continue if valid
 	if (index < ll->size)
@@ -437,10 +416,8 @@ void *LinkedList_getObject(LinkedList *ll, size_t index)
 	}
 	
 	// Unlock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_getObject\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_unlock(&ll->mutex);
 
 	// return
 	return object;
@@ -454,10 +431,8 @@ void *LinkedList_getObject(LinkedList *ll, size_t index)
 void LinkedList_wipeAllObjects(LinkedList *ll)
 {
 	// Lock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_lock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the mutex in "
-				"LinkedList_wipeAllObjects\n");
-	}
+	if (!ll->notThreadSafe)
+		pthread_mutex_lock(&ll->mutex);
 
 	// Get pointer to head
 	ListNode *current = ll->head;
@@ -490,10 +465,8 @@ void LinkedList_wipeAllObjects(LinkedList *ll)
 	ll->size = 0;
 	
 	// Unlock mutex (if enabled)
-	if (!ll->notThreadSafe && pthread_mutex_unlock(&ll->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the mutex in "
-				"LinkedList_wipeAllObjects\n");
-	} 
+	if (!ll->notThreadSafe)
+		pthread_mutex_unlock(&ll->mutex);
 }
 
 /*
@@ -507,10 +480,8 @@ LinkedList *LinkedList_clone(LinkedList *original)
 {
 	// Lock source mutex (if enabled), and store original notThreadSafe value
 	bool notThreadSafe = original->notThreadSafe;
-	if (!original->notThreadSafe && pthread_mutex_lock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't lock the source mutex "
-				"in LinkedList_clone\n");
-	}
+	if (!original->notThreadSafe)
+		pthread_mutex_lock(&original->mutex);
 	
 	// Set original temporarily to not thread safe so following calls do not
 	// try and lock the mutex and lock the thread forever (if thread safety is
@@ -543,11 +514,8 @@ LinkedList *LinkedList_clone(LinkedList *original)
 	// Normal return:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe &&
-			pthread_mutex_unlock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the source mutex "
-				"in LinkedList_clone\n");
-	}
+	if (!original->notThreadSafe)
+		pthread_mutex_unlock(&original->mutex);
 	
 	return newList;
 	
@@ -559,11 +527,8 @@ LinkedList *LinkedList_clone(LinkedList *original)
 	end:
 	// Unlock source mutex (if enabled)
 	original->notThreadSafe = notThreadSafe;
-	if (!original->notThreadSafe &&
-			pthread_mutex_unlock(&original->mutex) != 0) {
-		fprintf(stderr, "PhilPSX: LinkedList: Couldn't unlock the source mutex "
-				"in LinkedList_clone\n");
-	}
+	if (!original->notThreadSafe)
+		pthread_mutex_unlock(&original->mutex);
 	
 	return newList;
 }

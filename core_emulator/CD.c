@@ -127,16 +127,19 @@ CD *construct_CD(void)
  */
 void destruct_CD(CD *cd)
 {	
-	// Unmap CD file
-	if (munmap(cd->cdMapping, cd->cdFileSize) != 0) {
-		fprintf(stderr, "PhilPSX: CD: Couldn't unmap previous file mapping "
-				"from address space in destructor\n");
-	}
+	// Unmap CD file (if present)
+	if (cd->cdMapping) {
+		// Unmap the CD image from memory
+		if (munmap(cd->cdMapping, cd->cdFileSize) != 0) {
+			fprintf(stderr, "PhilPSX: CD: Couldn't unmap previous file mapping "
+					"from address space in destructor\n");
+		}
 
-	// Close file
-	if (close(cd->cdFileDescriptor) != 0) {
-		fprintf(stderr, "PhilPSX: CD: Couldn't close previous CD file in "
-				"destructor\n");
+		// Close file
+		if (close(cd->cdFileDescriptor) != 0) {
+			fprintf(stderr, "PhilPSX: CD: Couldn't close previous CD file in "
+					"destructor\n");
+		}
 	}
 	
 	// Destruct trackList array list
