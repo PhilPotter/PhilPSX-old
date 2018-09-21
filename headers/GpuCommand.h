@@ -15,11 +15,17 @@
 // Typedefs
 typedef struct GpuCommand GpuCommand;
 
+// Includes
+#include "GPU.h"
+
 // Struct definition
 struct GpuCommand {
 	
 	// Function pointer
-	void (*functionPointer)(GpuCommand *cmd);
+	void (*functionPointer)(GpuCommand *command);
+	
+	// GPU pointer
+	GPU *gpu;
 	
 	// Parameters - these are used for all PlayStation GPU commands
 	// in one way or another

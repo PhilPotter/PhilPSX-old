@@ -10,12 +10,14 @@
 // System includes
 #include <stdbool.h>
 #include <stdint.h>
+#include <SDL2/SDL.h>
 
 // Typedefs
 typedef struct GPU GPU;
 
 // Includes
 #include "SystemInterlink.h"
+#include "WorkQueue.h"
 
 // Public functions
 GPU *construct_GPU(void);
@@ -35,6 +37,8 @@ int32_t GPU_readStatus(GPU *gpu);
 void GPU_setGLFunctionPointers(GPU *gpu);
 void GPU_setMemoryInterface(GPU *gpu, SystemInterlink *smi);
 void GPU_setResolution(GPU *gpu, int32_t horizontal, int32_t vertical);
+void GPU_setSDLWindowReference(GPU *gpu, SDL_Window *window);
+void GPU_setWorkQueue(GPU *gpu, WorkQueue *wq);
 void GPU_submitToGP0(GPU *gpu, int32_t word);
 void GPU_submitToGP1(GPU *gpu, int32_t word);
 

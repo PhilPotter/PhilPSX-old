@@ -53,7 +53,8 @@ typedef struct {
 } EmulatorState;
 
 // Forward declarations for functions related to setup/cleanup of emulator:
-static bool setupEmu(Console *console, int numOfArgs, char **args);
+static bool setupEmu(Console *console, int numOfArgs, char **args,
+		WorkQueue *wq, SDL_Window *window);
 static void cleanupEmu(Console *console);
 static void *renderingFunction(void *arg);
 static void *emulatorFunction(void *arg);
@@ -102,12 +103,28 @@ int main(int argc, char **argv)
 		goto cleanup_window;
 	}
 	
+	// Setup OpenGL context to synchronise screen updates with the vertical
+	// retrace
+	if (SDL_GL_SetSwapInterval(1)) {
+		fprintf(stderr, "PhilPSX: Couldn't set OpenGL context to synchronise "
+				"screen updates with the vertical retrace: %s\n",
+				SDL_GetError());
+		goto cleanup_context;
+	}
+	
+	// Setup WorkQueue
+	WorkQueue *wq = construct_WorkQueue();
+	if (!wq) {
+		fprintf(stderr, "PhilPSX: Couldn't initialise work queue\n");
+		goto cleanup_context;
+	}
+	
 	// Setup console itself
 	Console console;
-	if (!setupEmu(&console, argc - 1, argv + 1)) {
+	if (!setupEmu(&console, argc - 1, argv + 1, wq, sdl.window)) {
 		fprintf(stderr, "PhilPSX: Couldn't create console\n");
 		retval = 1;
-		goto cleanup_context;
+		goto cleanup_workqueue;
 	}
 	
 	// Define emulator state holder to reference multiple objects from the
@@ -117,14 +134,10 @@ int main(int argc, char **argv)
 	es.console = &console;
 	es.sdl = &sdl;
 	es.quitBool = false;
-	es.wq = construct_WorkQueue();
-	if (!es.wq) {
-		fprintf(stderr, "PhilPSX: Couldn't initialise work queue\n");
-		goto cleanup_console;
-	}
+	es.wq = wq;
 	if (pthread_mutex_init(&es.quitMutex, NULL)) {
 		fprintf(stderr, "PhilPSX: Couldn't initialise quitMutex\n");
-		goto cleanup_workqueue;
+		goto cleanup_console;
 	}
 	
 	// Create threads, preparing a quit event to push in case they fail
@@ -186,13 +199,13 @@ int main(int argc, char **argv)
 	// Destroy quit mutex
 	pthread_mutex_destroy(&es.quitMutex);
 	
-	// Cleanup work queue
-	cleanup_workqueue:
-	destruct_WorkQueue(es.wq);
-	
 	// Cleanup console
 	cleanup_console:
 	cleanupEmu(&console);
+	
+	// Cleanup work queue
+	cleanup_workqueue:
+	destruct_WorkQueue(es.wq);
 	
 	// Cleanup OpenGL context
 	cleanup_context:
@@ -216,7 +229,8 @@ int main(int argc, char **argv)
  * This sets up all the components of the virtual PlayStation and links them
  * together properly.
  */
-static bool setupEmu(Console *console, int numOfArgs, char **args)
+static bool setupEmu(Console *console, int numOfArgs, char **args,
+		WorkQueue *wq, SDL_Window *window)
 {
 	// Parse BIOS path from command line arguments
 	bool biosSpecified = false;
@@ -337,6 +351,12 @@ static bool setupEmu(Console *console, int numOfArgs, char **args)
 	DMAArbiter_setCdrom(console->dma, console->cdrom);
 	DMAArbiter_setBiu(console->dma, R3051_getBiu(console->cpu));
 	
+	// Set work queue reference in GPU
+	GPU_setWorkQueue(console->gpu, wq);
+	
+	// Set SDL_Window reference in GPU
+	GPU_setSDLWindowReference(console->gpu, window);
+	
 	// Normal return:
 	return true;
 	
@@ -432,6 +452,8 @@ static void *renderingFunction(void *arg)
 		
 		// Check for items in work queue
 		GpuCommand *command = WorkQueue_waitForItem(wq);
+		if (command)
+			command->functionPointer(command);
 		WorkQueue_returnItem(wq, command);
 	}
 	
