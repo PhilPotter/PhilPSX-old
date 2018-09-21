@@ -66,8 +66,9 @@ int main(int argc, char **argv)
 	// List software name
 	fprintf(stdout, "PhilPSX - a Sony PlayStation 1 Emulator\n");
 
-	// variables
+	// Variables
 	int retval = 0;
+	EmulatorState es;
 	
 	// Setup SDL
 	if (!setupSDL()) {
@@ -112,12 +113,14 @@ int main(int argc, char **argv)
 		goto cleanup_context;
 	}
 	
-	// Setup WorkQueue
+	// Setup WorkQueue and set its reference in emulator state holder if
+	// successful
 	WorkQueue *wq = construct_WorkQueue();
 	if (!wq) {
 		fprintf(stderr, "PhilPSX: Couldn't initialise work queue\n");
 		goto cleanup_context;
 	}
+	es.wq = wq;
 	
 	// Setup console itself
 	Console console;
@@ -127,14 +130,12 @@ int main(int argc, char **argv)
 		goto cleanup_workqueue;
 	}
 	
-	// Define emulator state holder to reference multiple objects from the
+	// Set emulator state holder to reference multiple objects from the
 	// same struct - this makes passing state to threads without using global
 	// variables easier
-	EmulatorState es;
 	es.console = &console;
 	es.sdl = &sdl;
 	es.quitBool = false;
-	es.wq = wq;
 	if (pthread_mutex_init(&es.quitMutex, NULL)) {
 		fprintf(stderr, "PhilPSX: Couldn't initialise quitMutex\n");
 		goto cleanup_console;
