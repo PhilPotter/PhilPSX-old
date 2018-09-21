@@ -197,8 +197,8 @@ int32_t DMAArbiter_handleCDROM(DMAArbiter *dma)
 void DMAArbiter_handleDMATransactions(DMAArbiter *dma)
 {
 	// Check if we need to start any DMA requests
-	int32_t dmaChannelControl[7];
-	int32_t dmaChannelStarted[7];
+	int32_t dmaChannelControl[7] = { 0, 0, 0, 0, 0, 0, 0 };
+	int32_t dmaChannelStarted[7] = { 0, 0, 0, 0, 0, 0, 0 };
 	for (int32_t i = 0; i < 7; ++i) {
 		int32_t word = dma->channelRegisters[i * 3 + 2];
 		dmaChannelControl[i] = ((word << 24) & 0xFF000000) |
