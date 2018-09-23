@@ -646,7 +646,12 @@ static void Cop2_handleRTPS(Cop2 *gte, int32_t opcode)
 
 		// Deal with quirk in IR3 flag handling
 		if (sf == 0) {
-			int64_t temp = mac3 >> 12;
+			uint64_t u_mac3 = (uint64_t)mac3;
+			bool needsSignExtension = (u_mac3 & 0x8000000000000000UL) ==
+										0x8000000000000000UL;
+			int64_t temp = u_mac3 >> 12;
+			if (needsSignExtension)
+				temp |= 0xFFF0000000000000UL;
 			if (temp > 0x7FFF || temp < -0x8000)
 				gte->controlRegisters[31] |= 0x400000;
 		} else {
@@ -679,7 +684,13 @@ static void Cop2_handleRTPS(Cop2 *gte, int32_t opcode)
 	gte->dataRegisters[16] = gte->dataRegisters[17]; // SZ1 to SZ0
 	gte->dataRegisters[17] = gte->dataRegisters[18]; // SZ2 to SZ1
 	gte->dataRegisters[18] = gte->dataRegisters[19]; // SZ3 to SZ2
-	int64_t temp_sz3 = mac3 >> ((1 - sf) * 12);
+	uint64_t u_mac3 = (uint64_t)mac3;
+	bool needsSignExtension = (u_mac3 & 0x8000000000000000UL) ==
+								0x8000000000000000UL;
+	int32_t shiftBy = (1 - sf) * 12;
+	int64_t temp_sz3 = u_mac3 >> shiftBy;
+	if (needsSignExtension && shiftBy == 12)
+		temp_sz3 |= 0xFFF0000000000000UL;
 	if (temp_sz3 < 0) {
 		temp_sz3 = 0;
 		gte->controlRegisters[31] |= 0x40000;
@@ -4942,7 +4953,12 @@ static void Cop2_handleRTPT(Cop2 *gte, int32_t opcode)
 
 			// Deal with quirk in IR3 flag handling
 			if (sf == 0) {
-				int64_t temp = mac3 >> 12;
+				uint64_t u_mac3 = (uint64_t)mac3;
+				bool needsSignExtension = (u_mac3 & 0x8000000000000000UL) ==
+											0x8000000000000000UL;
+				int64_t temp = u_mac3 >> 12;
+				if (needsSignExtension)
+					temp |= 0xFFF0000000000000UL;
 				if (temp > 0x7FFF || temp < -0x8000) {
 					gte->controlRegisters[31] |= 0x400000;
 				}
@@ -4977,7 +4993,13 @@ static void Cop2_handleRTPT(Cop2 *gte, int32_t opcode)
 		gte->dataRegisters[16] = gte->dataRegisters[17]; // SZ1 to SZ0
 		gte->dataRegisters[17] = gte->dataRegisters[18]; // SZ2 to SZ1
 		gte->dataRegisters[18] = gte->dataRegisters[19]; // SZ3 to SZ2
-		int64_t temp_sz3 = mac3 >> ((1 - sf) * 12);
+		uint64_t u_mac3 = (uint64_t)mac3;
+		bool needsSignExtension = (u_mac3 & 0x8000000000000000UL) ==
+									0x8000000000000000UL;
+		int32_t shiftBy = (1 - sf) * 12;
+		int64_t temp_sz3 = u_mac3 >> shiftBy;
+		if (needsSignExtension && shiftBy == 12)
+			temp_sz3 |= 0xFFF0000000000000UL;
 		if (temp_sz3 < 0) {
 			temp_sz3 = 0;
 			gte->controlRegisters[31] |= 0x40000;

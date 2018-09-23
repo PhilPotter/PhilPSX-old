@@ -908,7 +908,8 @@ int32_t GPU_readResponse(GPU *gpu)
 					+ tempRowPixelOffset;
 
 			// Organise bytes into original structure
-			retVal = (GPU_readDMABuffer(gpu, pixelIndex + 3) & 0x1) << 31;
+			retVal = (int32_t)((int64_t)(GPU_readDMABuffer(gpu, pixelIndex + 3)
+						& 0x1) << 31);
 			retVal |= (GPU_readDMABuffer(gpu, pixelIndex + 2) & 0x1F) << 26;
 			retVal |= (GPU_readDMABuffer(gpu, pixelIndex + 1) & 0x1F) << 21;
 			retVal |= (GPU_readDMABuffer(gpu, pixelIndex) & 0x1F) << 16;
@@ -1005,11 +1006,11 @@ int32_t GPU_readStatus(GPU *gpu)
 				switch (tempStatus & 0x80000) {
 					case 0x80000: // 480-line mode,
 								  // bit only changes once per frame
-						mergeVal |= gpu->oddOrEven << 31;
+						mergeVal |= (int32_t)((int64_t)gpu->oddOrEven << 31);
 						break;
 					default: // 240-line mode, bit changes once per scanline
-						mergeVal |= ((gpu->gpuCycles /
-									GPU_CYCLES_PER_SCANLINE) % 2) << 31;
+						mergeVal |= (int32_t)((int64_t)((gpu->gpuCycles /
+									GPU_CYCLES_PER_SCANLINE) % 2) << 31);
 						break;
 				}
 			}

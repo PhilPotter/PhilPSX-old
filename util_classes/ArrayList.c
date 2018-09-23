@@ -500,7 +500,7 @@ static bool ArrayList_expandIfNeeded(ArrayList *al)
 		if (!tempPtr) {
 			// Expansion failed
 			fprintf(stderr, "PhilPSX: ArrayList: Couldn't expand array by "
-					"factor of %zu in ArayList_expandIfNeeded\n",
+					"factor of %d in ArayList_expandIfNeeded\n",
 					PHILPSX_ARRAYLIST_SCALE_FACTOR);
 			retVal = false;
 		}
@@ -535,7 +535,7 @@ static bool ArrayList_shrinkIfNeeded(ArrayList *al)
 		if (!tempPtr) {
 			// Contraction failed
 			fprintf(stderr, "PhilPSX: ArrayList: Couldn't shrink array by "
-					"factor of %zu in ArrayList_shrinkIfNeeded\n",
+					"factor of %d in ArrayList_shrinkIfNeeded\n",
 					PHILPSX_ARRAYLIST_SCALE_FACTOR);
 			retVal = false;
 		}

@@ -911,8 +911,8 @@ static void CDROMDrive_executeCommand(CDROMDrive *cdrom, int32_t commandNum,
 				break;
 			default: // Unimplemented command
 				fprintf(stderr,
-						"PhilPSX: CDROMDrive: Unimplemented command: %.2x\n",
-						(uint64_t)commandNum & 0xFF);
+						"PhilPSX: CDROMDrive: Unimplemented command: %2X\n",
+						commandNum & 0xFF);
 				break;
 		}
 	} else {

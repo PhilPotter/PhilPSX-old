@@ -1300,7 +1300,7 @@ int32_t SystemInterlink_readWord(SystemInterlink *smi, int32_t address)
 	int32_t retVal = 0;
 
 	// Handle RAM directly rather than going to readByte method
-	if (tempAddress >= 0L & tempAddress < 0x200000L) {
+	if (tempAddress >= 0L && tempAddress < 0x200000L) {
 		retVal = (smi->ram[address] & 0xFF) << 24 |
 				(smi->ram[address + 1] & 0xFF) << 16 |
 				(smi->ram[address + 2] & 0xFF) << 8 |
