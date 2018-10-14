@@ -21,12 +21,7 @@
 #define PHILPSX_TRACKTYPE_MODE2_2352 1
 
 // Path separator for portability
-static const char pathSeparator = 
-#ifdef _WIN32
-'\\';
-#else
-'/';
-#endif
+static const char pathSeparator = '/';
 
 // Forward declarations for functions and subcomponents private to this class
 // CD-related stuff:

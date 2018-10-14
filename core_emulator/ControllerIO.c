@@ -7,11 +7,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../headers/ControllerIO.h"
 #include "../headers/math_utils.h"
 
 // Forward declarations for functions private to this class
 // ControllerIO-related stuff:
+static void ControllerIO_updateBaudrateTimer(ControllerIO *cio);
 static void ControllerIO_updateJoyStat(ControllerIO *cio);
 
 /*
@@ -23,7 +25,7 @@ struct ControllerIO {
 	SystemInterlink *system;
 
 	// RX fifo
-	int8_t *rxFifo;
+	int8_t rxFifo[4];
 	int32_t rxCount;
 
 	// Controller related variables
@@ -50,13 +52,8 @@ ControllerIO *construct_ControllerIO(void)
 		goto end;
 	}
 	
-	// Initialise RX fifo
-	cio->rxFifo = calloc(4, sizeof(int8_t));
-	if (!cio->rxFifo) {
-		fprintf(stderr, "PhilPSX: ControllerIO: Couldn't allocate memory for "
-				"rxFifo array\n");
-		goto cleanup_controllerio;
-	}
+	// Zero out RX fifo
+	memset(cio->rxFifo, 0, sizeof(cio->rxFifo));
 	cio->rxCount = 0;
 
 	// Setup controller related variables
@@ -72,11 +69,7 @@ ControllerIO *construct_ControllerIO(void)
 	// Normal return:
 	return cio;
 	
-	// Cleanup path:
-	cleanup_controllerio:
-	free(cio);
-	cio = NULL;
-	
+	// Cleanup path:	
 	end:
 	return cio;
 }
@@ -86,8 +79,6 @@ ControllerIO *construct_ControllerIO(void)
  */
 void destruct_ControllerIO(ControllerIO *cio)
 {
-	// Free rxFifo array and then object itself
-	free(cio->rxFifo);
 	free(cio);
 }
 
@@ -213,7 +204,7 @@ void ControllerIO_setMemoryInterface(ControllerIO *cio, SystemInterlink *smi)
 /*
  * This function updates the baudrate timer.
  */
-void ControllerIO_updateBaudrateTimer(ControllerIO *cio)
+static void ControllerIO_updateBaudrateTimer(ControllerIO *cio)
 {
 	int32_t baudRate = logical_rshift(cio->joyStat, 11) & 0x1FFFFF;
 	baudRate -= cio->cycles;

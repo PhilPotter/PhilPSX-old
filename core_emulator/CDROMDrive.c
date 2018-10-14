@@ -64,16 +64,16 @@ struct CDROMDrive {
 	int32_t portIndex;
 
 	// This stores parameters for commands
-	int8_t *parameterFifo;
+	int8_t parameterFifo[16];
 	int32_t parameterCount;
 
 	// This stores command responses
-	int8_t *responseFifo;
+	int8_t responseFifo[16];
 	int32_t responseCount;
 	int32_t responseIndex;
 
 	// This stores data from the CD
-	int8_t *dataFifo;
+	int8_t *dataFifo; // Allocated dynamically due to size
 	int32_t dataCount;
 	int32_t dataIndex;
 
@@ -141,29 +141,17 @@ CDROMDrive *construct_CDROMDrive(void)
 		goto cleanup_cdromdrive;
 	}
 	
-	// Allocate parameter fifo
-	cdrom->parameterFifo = calloc(16, sizeof(int8_t));
-	if (!cdrom->parameterFifo) {
-		fprintf(stderr, "PhilPSX: CDROMDrive: Couldn't allocate memory for "
-				"parameterFifo array\n");
-		goto cleanup_cd;
-	}
-	
-	// Allocate response fifo
-	cdrom->responseFifo = calloc(16, sizeof(int8_t));
-	if (!cdrom->responseFifo) {
-		fprintf(stderr, "PhilPSX: CDROMDrive: Couldn't allocate memory for "
-				"responseFifo array\n");
-		goto cleanup_parameterfifo;
-	}
-	
 	// Allocate data fifo
 	cdrom->dataFifo = calloc(0x924, sizeof(int8_t));
 	if (!cdrom->dataFifo) {
 		fprintf(stderr, "PhilPSX: CDROMDrive: Couldn't allocate memory for "
 				"dataFifo array\n");
-		goto cleanup_responsefifo;
+		goto cleanup_cd;
 	}
+	
+	// Zero out parameterFifo and responseFifo arrays
+	memset(cdrom->parameterFifo, 0, sizeof(cdrom->parameterFifo));
+	memset(cdrom->responseFifo, 0, sizeof(cdrom->responseFifo));
 	
 	// Set system reference to NULL
 	cdrom->system = NULL;
@@ -222,12 +210,6 @@ CDROMDrive *construct_CDROMDrive(void)
 	return cdrom;
 	
 	// Cleanup path:
-	cleanup_responsefifo:
-	free(cdrom->responseFifo);
-	
-	cleanup_parameterfifo:
-	free(cdrom->parameterFifo);
-	
 	cleanup_cd:
 	destruct_CD(cdrom->cd);
 	
@@ -245,8 +227,6 @@ CDROMDrive *construct_CDROMDrive(void)
 void destruct_CDROMDrive(CDROMDrive *cdrom)
 {
 	free(cdrom->dataFifo);
-	free(cdrom->responseFifo);
-	free(cdrom->parameterFifo);
 	destruct_CD(cdrom->cd);
 	free(cdrom);
 }
@@ -538,7 +518,7 @@ static void CDROMDrive_clearDataFifo(CDROMDrive *cdrom)
 static void CDROMDrive_clearParameterFifo(CDROMDrive *cdrom)
 {
 	// Wipe parameter fifo with memset
-	memset(cdrom->parameterFifo, 0, 16);
+	memset(cdrom->parameterFifo, 0, sizeof(cdrom->parameterFifo));
 	cdrom->parameterCount = 0;
 }
 
@@ -548,7 +528,7 @@ static void CDROMDrive_clearParameterFifo(CDROMDrive *cdrom)
 static void CDROMDrive_clearResponseFifo(CDROMDrive *cdrom)
 {
 	// Wipe response fifo with memset
-	memset(cdrom->responseFifo, 0, 16);
+	memset(cdrom->responseFifo, 0, sizeof(cdrom->responseFifo));
 	cdrom->responseCount = 0;
 	cdrom->responseIndex = 0;
 }

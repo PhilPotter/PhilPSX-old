@@ -136,13 +136,13 @@ struct GPU {
 	// as well as the SDL_Window reference
 	WorkQueue *wq;
 	GLFunctionPointers *gl;
-	GLuint *vertexArrayObject;
-	GLuint *vramTexture;
-	GLuint *tempDrawTexture;
-	GLuint *vramFramebuffer;
-	GLuint *tempDrawFramebuffer;
-	GLuint *emptyFramebuffer;
-	GLuint *clutBuffer;
+	GLuint vertexArrayObject[1];
+	GLuint vramTexture[1];
+	GLuint tempDrawTexture[1];
+	GLuint vramFramebuffer[1];
+	GLuint tempDrawFramebuffer[1];
+	GLuint emptyFramebuffer[1];
+	GLuint clutBuffer[1];
 	GLuint displayScreenProgram;
 	GLuint gp0_a0Program;
 	GLuint gp0_80Program1;
@@ -172,7 +172,7 @@ struct GPU {
 	SystemInterlink *system;
 
 	// Command FIFO buffer for GP0 commands
-	int32_t *fifoBuffer;
+	int32_t fifoBuffer[16];
 	int32_t commandsInFifo;
 
 	// Status register
@@ -255,20 +255,12 @@ GPU *construct_GPU(void)
 		goto cleanup_mutex;
 	}
 	
-	// Setup FIFO buffer
-	gpu->fifoBuffer = calloc(16, sizeof(int32_t));
-	if (!gpu->fifoBuffer) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"fifoBuffer array\n");
-		goto cleanup_lineparameters;
-	}
-	
 	// Setup GLFunctionPointers struct
 	gpu->gl = calloc(1, sizeof(GLFunctionPointers));
 	if (!gpu->gl) {
 		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
 				"GLFunctionPointers struct\n");
-		goto cleanup_fifobuffer;
+		goto cleanup_lineparameters;
 	}
 	
 	// Anything set below is done for clarity - struct members not dealt
@@ -338,9 +330,6 @@ GPU *construct_GPU(void)
 	return gpu;
 	
 	// Cleanup path:
-	cleanup_fifobuffer:
-	free(gpu->fifoBuffer);
-	
 	cleanup_lineparameters:
 	destruct_ArrayList(gpu->lineParameters);
 	
@@ -363,7 +352,6 @@ GPU *construct_GPU(void)
 void destruct_GPU(GPU *gpu)
 {
 	free(gpu->gl);
-	free(gpu->fifoBuffer);
 	destruct_ArrayList(gpu->lineParameters);
 	pthread_mutex_destroy(&gpu->dmaBufferMutex);
 	free(gpu);
@@ -409,14 +397,7 @@ void GPU_cleanupGL(GPU *gpu)
 	gl->glDeleteProgram(gpu->gp0_02Program);
 	
 	// Free allocated memory
-	free(gpu->clutBuffer);
 	free(gpu->dmaBuffer);
-	free(gpu->emptyFramebuffer);
-	free(gpu->tempDrawFramebuffer);
-	free(gpu->tempDrawTexture);
-	free(gpu->vertexArrayObject);
-	free(gpu->vramFramebuffer);
-	free(gpu->vramTexture);
 }
 
 /*
@@ -504,52 +485,10 @@ bool GPU_initGL(GPU *gpu)
 				"initialImage\n");
 		goto cleanup_memory;
 	}
-	gpu->clutBuffer = calloc(1, sizeof(GLuint));
-	if (!gpu->clutBuffer) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"clutBuffer\n");
-		goto cleanup_memory;
-	}
 	gpu->dmaBuffer = calloc(1024 * 512 * 4, sizeof(int8_t));
 	if (!gpu->dmaBuffer) {
 		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
 				"dmaBuffer\n");
-		goto cleanup_memory;
-	}
-	gpu->emptyFramebuffer = calloc(1, sizeof(GLuint));
-	if (!gpu->emptyFramebuffer) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"emptyFramebuffer\n");
-		goto cleanup_memory;
-	}
-	gpu->tempDrawFramebuffer = calloc(1, sizeof(GLuint));
-	if (!gpu->tempDrawFramebuffer) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"tempDrawFramebuffer\n");
-		goto cleanup_memory;
-	}
-	gpu->tempDrawTexture = calloc(1, sizeof(GLuint));
-	if (!gpu->tempDrawTexture) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"tempDrawTexture\n");
-		goto cleanup_memory;
-	}
-	gpu->vertexArrayObject = calloc(1, sizeof(GLuint));
-	if (!gpu->vertexArrayObject) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"vertexArrayObject\n");
-		goto cleanup_memory;
-	}
-	gpu->vramFramebuffer = calloc(1, sizeof(GLuint));
-	if (!gpu->vramFramebuffer) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"vramFramebuffer\n");
-		goto cleanup_memory;
-	}
-	gpu->vramTexture = calloc(1, sizeof(GLuint));
-	if (!gpu->vramTexture) {
-		fprintf(stderr, "PhilPSX: GPU: Couldn't allocate memory for "
-				"vramTexture\n");
 		goto cleanup_memory;
 	}
 
@@ -825,22 +764,8 @@ bool GPU_initGL(GPU *gpu)
 	cleanup_memory:
 	if (initialImage)
 		free(initialImage);
-	if (gpu->clutBuffer)
-		free(gpu->clutBuffer);
 	if (gpu->dmaBuffer)
 		free(gpu->dmaBuffer);
-	if (gpu->emptyFramebuffer)
-		free(gpu->emptyFramebuffer);
-	if (gpu->tempDrawFramebuffer)
-		free(gpu->tempDrawFramebuffer);
-	if (gpu->tempDrawTexture)
-		free(gpu->tempDrawTexture);
-	if (gpu->vertexArrayObject)
-		free(gpu->vertexArrayObject);
-	if (gpu->vramFramebuffer)
-		free(gpu->vramFramebuffer);
-	if (gpu->vramTexture)
-		free(gpu->vramTexture);
 	
 	return false;
 }
@@ -2827,7 +2752,7 @@ static void GPU_GP1_00(GPU *gpu, int32_t command)
 static void GPU_GP1_01(GPU *gpu, int32_t command)
 {
 	// Empty buffer and set commandsInBuffer to 0
-	memset(gpu->fifoBuffer, 0, sizeof(int32_t) * 16);
+	memset(gpu->fifoBuffer, 0, sizeof(gpu->fifoBuffer));
 	gpu->commandsInFifo = 0;
 }
 

@@ -1,6 +1,7 @@
 /*
  * This C file models the System Control Co-Processor of the PlayStation as a
- * class.
+ * class. The struct definition itself can be found inside R3051.c, as it is
+ * intended to be contained as a struct inside the main R3051 struct.
  * 
  * Cop0.c - Copyright Phillip Potter, 2018
  */
@@ -8,63 +9,20 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../headers/Cop0.h"
+#include <string.h>
+#include "../headers/Cop0_all.h"
 #include "../headers/math_utils.h"
 
 /*
- * The Cop0 struct models the System Control Co-Processor (Cop0), which
- * is responsible for memory management and exceptions.
+ * This constructs a Cop0 object using the pre-allocated struct referenced by
+ * sccp.
  */
-struct Cop0 {
-
-	// Register definitions
-	int32_t *copRegisters;
-
-	// Condition line
-	bool conditionLine;
-};
-
-/*
- * This constructs a Cop0 object.
- */
-Cop0 *construct_Cop0(void)
+void construct_Cop0(Cop0 *sccp)
 {
-	// Allocate Cop0 struct
-	Cop0 *sccp = malloc(sizeof(Cop0));
-	if (!sccp) {
-		fprintf(stderr, "PhilPSX: Cop0: Couldn't allocate memory for "
-				"Cop0 struct\n");
-		goto end;
-	}
-	
-	sccp->copRegisters = calloc(32, sizeof(int32_t));
-	if (!sccp->copRegisters) {
-		fprintf(stderr, "PhilPSX: Cop0: Couldn't allocate memory for "
-				"copRegisters array\n");
-		goto cleanup_cop0;
-	}
+	// Zero out registers
+	memset(sccp->copRegisters, 0, sizeof(sccp->copRegisters));
 	
 	Cop0_reset(sccp);
-	
-	// Normal return:
-	return sccp;
-	
-	// Cleanup path:
-	cleanup_cop0:
-	free(sccp);
-	sccp = NULL;
-	
-	end:
-	return sccp;
-}
-
-/*
- * This destructs a Cop0 object.
- */
-void destruct_Cop0(Cop0 *sccp)
-{
-	free(sccp->copRegisters);
-	free(sccp);
 }
 
 /*

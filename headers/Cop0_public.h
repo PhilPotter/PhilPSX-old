@@ -2,10 +2,10 @@
  * This header file provides the public API for the System Control Co-Processor
  * of the PlayStation.
  * 
- * Cop0.h - Copyright Phillip Potter, 2018
+ * Cop0_public.h - Copyright Phillip Potter, 2018
  */
-#ifndef PHILPSX_COP0_HEADER
-#define PHILPSX_COP0_HEADER
+#ifndef PHILPSX_COP0_PUBLIC_HEADER
+#define PHILPSX_COP0_PUBLIC_HEADER
 
 // System includes
 #include <stdbool.h>
@@ -15,8 +15,7 @@
 typedef struct Cop0 Cop0;
 
 // Public functions
-Cop0 *construct_Cop0(void);
-void destruct_Cop0(Cop0 *sccp);
+void construct_Cop0(Cop0 *sccp); // Needs a pre-allocated memory region
 void Cop0_reset(Cop0 *sccp);
 bool Cop0_getConditionLineStatus(Cop0 *sccp);
 void Cop0_setConditionLineStatus(Cop0 *sccp, bool status);

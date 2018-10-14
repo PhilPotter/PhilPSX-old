@@ -14,7 +14,6 @@
 typedef struct DMAArbiter DMAArbiter;
 
 // Includes
-#include "BusInterfaceUnit.h"
 #include "CDROMDrive.h"
 #include "R3051.h"
 #include "GPU.h"
@@ -23,13 +22,8 @@ typedef struct DMAArbiter DMAArbiter;
 // Public functions
 DMAArbiter *construct_DMAArbiter(void);
 void destruct_DMAArbiter(DMAArbiter *dma);
-int32_t DMAArbiter_handleCDROM(DMAArbiter *dma);
-void DMAArbiter_handleDMATransactions(DMAArbiter *dma);
-int32_t DMAArbiter_handleGPU(DMAArbiter *dma);
-int32_t DMAArbiter_handleOTC(DMAArbiter *dma);
 int8_t DMAArbiter_readByte(DMAArbiter *dma, int32_t address);
 int32_t DMAArbiter_readWord(DMAArbiter *dma, int32_t address);
-void DMAArbiter_setBiu(DMAArbiter *dma, BusInterfaceUnit *biu);
 void DMAArbiter_setCdrom(DMAArbiter *dma, CDROMDrive *cdrom);
 void DMAArbiter_setCpu(DMAArbiter *dma, R3051 *cpu);
 void DMAArbiter_setGpu(DMAArbiter *dma, GPU *gpu);

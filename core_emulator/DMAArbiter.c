@@ -10,13 +10,13 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../headers/DMAArbiter.h"
-#include "../headers/BusInterfaceUnit.h"
 #include "../headers/CDROMDrive.h"
 #include "../headers/R3051.h"
 #include "../headers/GPU.h"
 #include "../headers/SystemInterlink.h"
-#include "../headers/Cop0.h"
+#include "../headers/Cop0_public.h"
 #include "../headers/Components.h"
 #include "../headers/math_utils.h"
 
@@ -32,6 +32,13 @@
 #define PHILPSX_DMA_PIO 5
 #define PHILPSX_DMA_OTC 6
 
+// Forward declarations for functions private to this class
+// DMAArbiter-related stuff:
+static int32_t DMAArbiter_handleCDROM(DMAArbiter *dma);
+static void DMAArbiter_handleDMATransactions(DMAArbiter *dma);
+static int32_t DMAArbiter_handleGPU(DMAArbiter *dma);
+static int32_t DMAArbiter_handleOTC(DMAArbiter *dma);
+
 /*
  * This struct contains the state to model DMA transfers
  * within the PlayStation.
@@ -43,7 +50,6 @@ struct DMAArbiter {
 
 	// Store device references
 	R3051 *cpu;
-	BusInterfaceUnit *biu;
 	GPU *gpu;
 	CDROMDrive *cdrom;
 
@@ -52,7 +58,7 @@ struct DMAArbiter {
 	int32_t dmaInterruptRegister;
 
 	// Per-channel registers
-	int32_t *channelRegisters;
+	int32_t channelRegisters[3 * PHILPSX_DMA_CHANNEL_COUNT];
 };
 
 /*
@@ -68,14 +74,8 @@ DMAArbiter *construct_DMAArbiter(void)
 		goto end;
 	}
 	
-	// Allocate channelRegisters array
-	dma->channelRegisters =
-			calloc(3 * PHILPSX_DMA_CHANNEL_COUNT, sizeof(int32_t));
-	if (!dma->channelRegisters) {
-		fprintf(stderr, "PhilPSX: DMAArbiter: Couldn't allocate memory for "
-				"channelRegisters array\n");
-		goto cleanup_dmaarbiter;
-	}
+	// Zero out channelRegisters array
+	memset(dma->channelRegisters, 0, sizeof(dma->channelRegisters));
 	
 	// Setup other registers
 	dma->dmaControlRegister = 0;
@@ -84,7 +84,6 @@ DMAArbiter *construct_DMAArbiter(void)
 	// Set all component references to NULL
 	dma->system = NULL;
 	dma->cpu = NULL;
-	dma->biu = NULL;
 	dma->gpu = NULL;
 	dma->cdrom = NULL;
 	
@@ -92,10 +91,6 @@ DMAArbiter *construct_DMAArbiter(void)
 	return dma;
 	
 	// Cleanup path:
-	cleanup_dmaarbiter:
-	free(dma);
-	dma = NULL;
-	
 	end:
 	return dma;
 }
@@ -105,435 +100,7 @@ DMAArbiter *construct_DMAArbiter(void)
  */
 void destruct_DMAArbiter(DMAArbiter *dma)
 {
-	free(dma->channelRegisters);
 	free(dma);
-}
-
-/*
- * This function handles CD-ROM DMA transfers - it assumes a sync mode of 0.
- */
-int32_t DMAArbiter_handleCDROM(DMAArbiter *dma)
-{
-	// Get DMA base address and correct endianness
-	int32_t baseAddress = dma->channelRegisters[PHILPSX_DMA_CDROM * 3];
-	baseAddress = ((baseAddress << 24) & 0xFF000000) |
-			((baseAddress << 8) & 0xFF0000) |
-			(logical_rshift(baseAddress, 8) & 0xFF00) |
-			(logical_rshift(baseAddress, 24) & 0xFF);
-	baseAddress = Cop0_virtualToPhysical(R3051_getCop0(dma->cpu), baseAddress);
-
-	// Get number of words and correct endianness
-	int32_t numberOfWords = dma->channelRegisters[PHILPSX_DMA_CDROM * 3 + 1];
-	numberOfWords = ((numberOfWords << 24) & 0xFF000000) |
-			((numberOfWords << 8) & 0xFF0000) |
-			(logical_rshift(numberOfWords, 8) & 0xFF00) |
-			(logical_rshift(numberOfWords, 24) & 0xFF);
-	numberOfWords &= 0xFFFF;
-	if (numberOfWords == 0)
-		numberOfWords = 0x10000;
-
-	// Calculate time to run system for (40 clocks per word for CDROM)
-	int32_t dmaCycles = 40 * numberOfWords;
-
-	// Perform CD-ROM transfer
-	int64_t startingByte = 0xFFFFFFFFL & baseAddress;
-	int64_t endingByte = (startingByte + numberOfWords * 4) - 1;
-	int32_t numberOfBytes = numberOfWords * 4;
-
-	// If DMA transfer is destined for RAM, then take shortcut and
-	// transfer whole lot
-	switch ((int32_t)(startingByte & 0xFFE00000)) {
-		case 0: // Starts in RAM
-			switch ((int32_t)(endingByte & 0xFFE00000)) {
-				case 0: // Ends in RAM, transfer whole lot in one go
-					CDROMDrive_chunkCopy(
-							dma->cdrom,
-							SystemInterlink_getRamArray(dma->system),
-							(int32_t)startingByte,
-							numberOfBytes
-							);
-					break;
-				default: // Doesn't end in RAM, handle normally
-					for (int32_t i = 0; i < numberOfBytes; ++i) {
-						SystemInterlink_writeByte(
-								dma->system,
-								(int32_t)startingByte,
-								SystemInterlink_readByte(
-								dma->system,
-								0x1F801802)
-								);
-						++startingByte;
-					}
-					break;
-			}
-			break;
-		default: // Doesn't start in RAM, handle normally
-			for (int32_t i = 0; i < (numberOfWords * 4); ++i) {
-				SystemInterlink_writeByte(
-						dma->system,
-						(int32_t)startingByte,
-						SystemInterlink_readByte(dma->system, 0x1F801802)
-						);
-				++startingByte;
-			}
-			break;
-	}
-
-	// Decrement BC if chopping enabled (detect in little-endian mode
-	// for speed)
-	switch (dma->channelRegisters[PHILPSX_DMA_CDROM * 3 + 2] & 0x10000) {
-		case 0x10000:
-			// Set BC (again in little-endian mode for speed) to 0
-			dma->channelRegisters[PHILPSX_DMA_CDROM * 3 + 1] &= 0xFFFF;
-			break;
-	}
-
-	return dmaCycles;
-}
-
-/*
- * This function handles DMA and makes data go to the right place.
- */
-void DMAArbiter_handleDMATransactions(DMAArbiter *dma)
-{
-	// Check if we need to start any DMA requests
-	int32_t dmaChannelControl[7] = { 0, 0, 0, 0, 0, 0, 0 };
-	int32_t dmaChannelStarted[7] = { 0, 0, 0, 0, 0, 0, 0 };
-	for (int32_t i = 0; i < 7; ++i) {
-		int32_t word = dma->channelRegisters[i * 3 + 2];
-		dmaChannelControl[i] = ((word << 24) & 0xFF000000) |
-				((word << 8) & 0xFF0000) |
-				(logical_rshift(word, 8) & 0xFF00) |
-				(logical_rshift(word, 24) & 0xFF);
-
-		switch (logical_rshift((dmaChannelControl[i] & 0x600), 9)) {
-			case 0: // Sync mode 0
-				if ((dmaChannelControl[i] & 0x11000000) == 0x11000000)
-					dmaChannelStarted[i] = 0x1;
-				break;
-			default: // Other
-				dmaChannelStarted[i] =
-						logical_rshift(dmaChannelControl[i], 24) & 0x1;
-				break;
-		}
-	}
-
-	// Check if each one is actually enabled
-	int32_t tempControlRegister =
-			((dma->dmaControlRegister << 24) & 0xFF000000) |
-			((dma->dmaControlRegister << 8) & 0xFF0000) |
-			(logical_rshift(dma->dmaControlRegister, 8) & 0xFF00) |
-			(logical_rshift(dma->dmaControlRegister, 24) & 0xFF);
-
-	int32_t highestPriority = 8;
-	int32_t highestPriorityChannelSoFar = -1;
-	for (int32_t i = 0; i < 7; ++i) {
-		switch (dmaChannelStarted[i]) {
-			case 1:
-			{
-				int32_t priority =
-						logical_rshift(tempControlRegister, (i * 4)) & 0x7;
-				int32_t enabled =
-						logical_rshift(tempControlRegister, (i * 4)) & 0x8;
-
-				if (enabled > 0) {
-					if (priority <= highestPriority) {
-						highestPriority = priority;
-						highestPriorityChannelSoFar = i;
-					}
-				}
-			}
-			break;
-		}
-	}
-
-	int32_t cpuCycles = 0;
-
-	// Perform DMA transfer itself if one is needed
-	switch (highestPriorityChannelSoFar) {
-		case -1: // Do nothing
-			break;
-		default: // Do DMA transfer
-			// Set bus holder to DMA Arbiter
-			BusInterfaceUnit_setHolder(dma->biu, PHILPSX_COMPONENTS_DMA);
-
-			// Clear bit 28 of channel control register (remember it is
-			// stored in little-endian mode)
-			dma->channelRegisters[highestPriorityChannelSoFar * 3 + 2] &=
-					0xFFFFFFEF;
-
-			// Call correct method depending on channel or mode
-			switch (highestPriorityChannelSoFar) {
-				case 0: // MDECin
-					fprintf(stdout, "PhilPSX: DMAArbiter: MDECin DMA "
-							"triggered\n");
-					break;
-				case 1: // MDECout
-					fprintf(stdout, "PhilPSX: DMAArbiter: MDECout DMA "
-							"triggered\n");
-					break;
-				case 2: // GPU DMA
-					cpuCycles = DMAArbiter_handleGPU(dma);
-					break;
-				case 3: // CD-ROM
-					cpuCycles = DMAArbiter_handleCDROM(dma);
-					break;
-				case 4: // SPU
-					fprintf(stdout, "PhilPSX: DMAArbiter: SPU DMA "
-							"triggered\n");
-					break;
-				case 5: // PIO
-					fprintf(stdout, "PhilPSX: DMAArbiter: PIO DMA "
-							"triggered\n");
-					break;
-				case 6: // OTC DMA
-					cpuCycles = DMAArbiter_handleOTC(dma);
-					break;
-			}
-
-			// Clear bit 24 of channel control register (again, remember
-			// endianness
-			dma->channelRegisters[highestPriorityChannelSoFar * 3 + 2] &=
-					0xFFFFFFFE;
-
-			// Set bus holder back to CPU
-			BusInterfaceUnit_setHolder(dma->biu, PHILPSX_COMPONENTS_CPU);
-
-			// Trigger interrupt by masking correct bit (remember endianness)
-			int32_t tempInterruptRegister =
-					((dma->dmaInterruptRegister << 24) & 0xFF000000) |
-					((dma->dmaInterruptRegister << 8) & 0xFF0000) |
-					(logical_rshift(dma->dmaInterruptRegister, 8) & 0xFF00) |
-					(logical_rshift(dma->dmaInterruptRegister, 24) & 0xFF);
-			int32_t intMask = 0x00010000 << highestPriorityChannelSoFar;
-			intMask |= 0x00800000;
-
-			if ((tempInterruptRegister & intMask) == intMask) {
-				intMask = 0x01000000 << highestPriorityChannelSoFar;
-				tempInterruptRegister |= intMask;
-				dma->dmaInterruptRegister =
-						((tempInterruptRegister << 24) & 0xFF000000) |
-						((tempInterruptRegister << 8) & 0xFF0000) |
-						(logical_rshift(tempInterruptRegister, 8) & 0xFF00) |
-						(logical_rshift(tempInterruptRegister, 24) & 0xFF);
-
-				// Set flag in system's Interrupt Status Register
-				SystemInterlink_setDMAInterruptDelay(dma->system, 0);
-			}
-
-			break;
-	}
-
-	//SystemInterlink_appendSyncCycles(dma->system, cpuCycles);
-}
-
-/*
- * This function handles GPU DMA transfers.
- */
-int32_t DMAArbiter_handleGPU(DMAArbiter *dma)
-{
-	// Get DMA base address and correct endianness
-	int32_t baseAddress = dma->channelRegisters[PHILPSX_DMA_GPU * 3];
-	baseAddress = ((baseAddress << 24) & 0xFF000000) |
-			((baseAddress << 8) & 0xFF0000) |
-			(logical_rshift(baseAddress, 8) & 0xFF00) |
-			(logical_rshift(baseAddress, 24) & 0xFF);
-	baseAddress = Cop0_virtualToPhysical(R3051_getCop0(dma->cpu), baseAddress);
-
-	// Get block control and correct endianness
-	int32_t blockControl = dma->channelRegisters[PHILPSX_DMA_GPU * 3 + 1];
-	blockControl = ((blockControl << 24) & 0xFF000000) |
-			((blockControl << 8) & 0xFF0000) |
-			(logical_rshift(blockControl, 8) & 0xFF00) |
-			(logical_rshift(blockControl, 24) & 0xFF);
-
-	// Get channel control register and correct endianness
-	int32_t channelControl = dma->channelRegisters[PHILPSX_DMA_GPU * 3 + 2];
-	channelControl = ((channelControl << 24) & 0xFF000000) |
-			((channelControl << 8) & 0xFF0000) |
-			(logical_rshift(channelControl, 8) & 0xFF00) |
-			(logical_rshift(channelControl, 24) & 0xFF);
-
-	// Act according to specified mode
-	int32_t dmaCycles = 0;
-	switch (logical_rshift((channelControl & 0x600), 9)) {
-		case 1:
-		{
-			// Store base address as long
-			int64_t tempAddress = baseAddress & 0xFFFFFFFFL;
-
-			// Get block size in words
-			int32_t blockSize = 0xFFFF & blockControl;
-			switch (blockSize) {
-				case 0:
-					blockSize = 0x10000;
-					break;
-			}
-
-			// Get number of blocks
-			int32_t numOfBlocks = 0xFFFF & logical_rshift(blockControl, 16);
-			switch (numOfBlocks) {
-				case 0:
-					numOfBlocks = 0x10000;
-					break;
-			}
-
-			// Calculate total number of words and cycles
-			int32_t numOfWords = blockSize * numOfBlocks;
-			dmaCycles = numOfWords;
-
-			// Read from or write to GPU depending on channel control register
-			int32_t writeToGPU = channelControl & 0x1;
-			int32_t backward = logical_rshift(channelControl, 1) & 0x1;
-			switch (writeToGPU) {
-				case 0: // Read from GPU to RAM
-					for (int32_t i = 0; i < numOfWords; ++i) {
-						SystemInterlink_writeWord(
-								dma->system,
-								(int32_t)tempAddress,
-								GPU_readResponse(dma->gpu)
-								);
-						switch (backward) {
-							case 0: // Go forward to next address
-								tempAddress += 4;
-								break;
-							case 1: // Go backward to next address
-								tempAddress -= 4;
-								break;
-						}
-					}
-					break;
-				case 1: // Write to GPU from RAM
-					for (int32_t i = 0; i < numOfWords; ++i) {
-						GPU_submitToGP0(
-								dma->gpu,
-								SystemInterlink_readWord(
-								dma->system,
-								(int32_t)tempAddress)
-								);
-						switch (backward) {
-							case 0: // Go forward to next address
-								tempAddress += 4;
-								break;
-							case 1: // Go backward to next address
-								tempAddress -= 4;
-								break;
-						}
-					}
-					break;
-			}
-
-			// Set BA to 0 directly in register (little-endian) for speed
-			dma->channelRegisters[PHILPSX_DMA_GPU * 3 + 1] &= 0xFFFF0000;
-
-		}
-		break;
-		case 2:
-		{
-			// Iterate over linked list, sending commands to GPU GP0
-			int32_t nextAddress = baseAddress;
-			do {
-				// Store as current address
-				int32_t currentAddress = nextAddress;
-
-				// Read word into nextAddress, update base address
-				// register and correct endianness
-				nextAddress =
-						SystemInterlink_readWord(dma->system, nextAddress);
-				dma->channelRegisters[PHILPSX_DMA_GPU * 3] =
-						nextAddress & 0xFFFFFF00;
-				nextAddress = ((nextAddress << 24) & 0xFF000000) |
-						((nextAddress << 8) & 0xFF0000) |
-						(logical_rshift(nextAddress, 8) & 0xFF00) |
-						(logical_rshift(nextAddress, 24) & 0xFF);
-
-				// Get number of words we need and mask them from nextAddress
-				int32_t numOfWords =
-						logical_rshift((nextAddress & 0xFF000000), 24);
-				nextAddress &= 0xFFFFFF;
-
-				// Iterate current block and send commands
-				for (int32_t i = 1; i <= numOfWords; ++i) {
-					GPU_submitToGP0(
-							dma->gpu,
-							SystemInterlink_readWord(
-							dma->system,
-							currentAddress + i * 4)
-							);
-					++dmaCycles;
-				}
-			} while (nextAddress != 0xFFFFFF);
-		}
-		break;
-		default:
-			fprintf(stderr, "This transfer mode is not implemented for "
-					"GPU DMA\n");
-			exit(1);
-			break;
-	}
-
-	return dmaCycles;
-}
-
-/*
- * This function handles OTC DMA transfers - it assumes a sync mode of 0.
- */
-int32_t DMAArbiter_handleOTC(DMAArbiter *dma)
-{
-	// Get DMA base address and correct endianness
-	int32_t baseAddress = dma->channelRegisters[PHILPSX_DMA_OTC * 3];
-	baseAddress = ((baseAddress << 24) & 0xFF000000) |
-			((baseAddress << 8) & 0xFF0000) |
-			(logical_rshift(baseAddress, 8) & 0xFF00) |
-			(logical_rshift(baseAddress, 24) & 0xFF);
-	baseAddress = Cop0_virtualToPhysical(R3051_getCop0(dma->cpu), baseAddress);
-
-	// Get number of words and correct endianness
-	int32_t numberOfWords = dma->channelRegisters[PHILPSX_DMA_OTC * 3 + 1];
-	numberOfWords = ((numberOfWords << 24) & 0xFF000000) |
-			((numberOfWords << 8) & 0xFF0000) |
-			(logical_rshift(numberOfWords, 8) & 0xFF00) |
-			(logical_rshift(numberOfWords, 24) & 0xFF);
-	numberOfWords &= 0xFFFF;
-	if (numberOfWords == 0)
-		numberOfWords = 0x10000;
-
-	// Calculate time to run system for (1 clock per word for OTC)
-	int32_t dmaCycles = numberOfWords;
-
-	// Perform OTC transfer
-	int64_t currentWord = 0xFFFFFFFFL & baseAddress;
-	int32_t destinationWord = (int32_t)(currentWord - 4L);
-	destinationWord = ((destinationWord << 24) & 0xFF000000) |
-			((destinationWord << 8) & 0xFF0000) |
-			(logical_rshift(destinationWord, 8) & 0xFF00) |
-			(logical_rshift(destinationWord, 24) & 0xFF);
-
-	for (int32_t i = 0; i < numberOfWords - 1; ++i) {
-		SystemInterlink_writeWord(
-				dma->system,
-				(int32_t)currentWord,
-				destinationWord
-				);
-		currentWord -= 4L;
-		destinationWord = (int32_t)(currentWord - 4L);
-		destinationWord = ((destinationWord << 24) & 0xFF000000) |
-				((destinationWord << 8) & 0xFF0000) |
-				(logical_rshift(destinationWord, 8) & 0xFF00) |
-				(logical_rshift(destinationWord, 24) & 0xFF);
-	}
-	SystemInterlink_writeWord(dma->system, (int32_t)currentWord, 0xFFFFFF00);
-
-	// Decrement BC if chopping enabled (detect in little-endian mode
-	// for speed)
-	switch (dma->channelRegisters[PHILPSX_DMA_OTC * 3 + 2] & 0x10000) {
-		case 0x10000:
-			// Set BC (again in little-endian mode for speed) to 0
-			dma->channelRegisters[PHILPSX_DMA_OTC * 3 + 1] &= 0xFFFF;
-			break;
-	}
-
-	return dmaCycles;
 }
 
 /*
@@ -674,14 +241,6 @@ int32_t DMAArbiter_readWord(DMAArbiter *dma, int32_t address)
 	}
 
 	return retVal;
-}
-
-/*
- * This function sets the Bus Interface Unit reference.
- */
-void DMAArbiter_setBiu(DMAArbiter *dma, BusInterfaceUnit *biu)
-{
-	dma->biu = biu;
 }
 
 /*
@@ -891,4 +450,431 @@ void DMAArbiter_writeWord(DMAArbiter *dma, int32_t address, int32_t word)
 					(logical_rshift(dma->dmaInterruptRegister, 24) & 0xFF);
 			break;
 	}
+}
+
+/*
+ * This function handles CD-ROM DMA transfers - it assumes a sync mode of 0.
+ */
+static int32_t DMAArbiter_handleCDROM(DMAArbiter *dma)
+{
+	// Get DMA base address and correct endianness
+	int32_t baseAddress = dma->channelRegisters[PHILPSX_DMA_CDROM * 3];
+	baseAddress = ((baseAddress << 24) & 0xFF000000) |
+			((baseAddress << 8) & 0xFF0000) |
+			(logical_rshift(baseAddress, 8) & 0xFF00) |
+			(logical_rshift(baseAddress, 24) & 0xFF);
+	baseAddress = Cop0_virtualToPhysical(R3051_getCop0(dma->cpu), baseAddress);
+
+	// Get number of words and correct endianness
+	int32_t numberOfWords = dma->channelRegisters[PHILPSX_DMA_CDROM * 3 + 1];
+	numberOfWords = ((numberOfWords << 24) & 0xFF000000) |
+			((numberOfWords << 8) & 0xFF0000) |
+			(logical_rshift(numberOfWords, 8) & 0xFF00) |
+			(logical_rshift(numberOfWords, 24) & 0xFF);
+	numberOfWords &= 0xFFFF;
+	if (numberOfWords == 0)
+		numberOfWords = 0x10000;
+
+	// Calculate time to run system for (40 clocks per word for CDROM)
+	int32_t dmaCycles = 40 * numberOfWords;
+
+	// Perform CD-ROM transfer
+	int64_t startingByte = 0xFFFFFFFFL & baseAddress;
+	int64_t endingByte = (startingByte + numberOfWords * 4) - 1;
+	int32_t numberOfBytes = numberOfWords * 4;
+
+	// If DMA transfer is destined for RAM, then take shortcut and
+	// transfer whole lot
+	switch ((int32_t)(startingByte & 0xFFE00000)) {
+		case 0: // Starts in RAM
+			switch ((int32_t)(endingByte & 0xFFE00000)) {
+				case 0: // Ends in RAM, transfer whole lot in one go
+					CDROMDrive_chunkCopy(
+							dma->cdrom,
+							SystemInterlink_getRamArray(dma->system),
+							(int32_t)startingByte,
+							numberOfBytes
+							);
+					break;
+				default: // Doesn't end in RAM, handle normally
+					for (int32_t i = 0; i < numberOfBytes; ++i) {
+						SystemInterlink_writeByte(
+								dma->system,
+								(int32_t)startingByte,
+								SystemInterlink_readByte(
+								dma->system,
+								0x1F801802)
+								);
+						++startingByte;
+					}
+					break;
+			}
+			break;
+		default: // Doesn't start in RAM, handle normally
+			for (int32_t i = 0; i < (numberOfWords * 4); ++i) {
+				SystemInterlink_writeByte(
+						dma->system,
+						(int32_t)startingByte,
+						SystemInterlink_readByte(dma->system, 0x1F801802)
+						);
+				++startingByte;
+			}
+			break;
+	}
+
+	// Decrement BC if chopping enabled (detect in little-endian mode
+	// for speed)
+	switch (dma->channelRegisters[PHILPSX_DMA_CDROM * 3 + 2] & 0x10000) {
+		case 0x10000:
+			// Set BC (again in little-endian mode for speed) to 0
+			dma->channelRegisters[PHILPSX_DMA_CDROM * 3 + 1] &= 0xFFFF;
+			break;
+	}
+
+	return dmaCycles;
+}
+
+/*
+ * This function handles DMA and makes data go to the right place.
+ */
+static void DMAArbiter_handleDMATransactions(DMAArbiter *dma)
+{
+	// Check if we need to start any DMA requests
+	int32_t dmaChannelControl[7] = { 0, 0, 0, 0, 0, 0, 0 };
+	int32_t dmaChannelStarted[7] = { 0, 0, 0, 0, 0, 0, 0 };
+	for (int32_t i = 0; i < 7; ++i) {
+		int32_t word = dma->channelRegisters[i * 3 + 2];
+		dmaChannelControl[i] = ((word << 24) & 0xFF000000) |
+				((word << 8) & 0xFF0000) |
+				(logical_rshift(word, 8) & 0xFF00) |
+				(logical_rshift(word, 24) & 0xFF);
+
+		switch (logical_rshift((dmaChannelControl[i] & 0x600), 9)) {
+			case 0: // Sync mode 0
+				if ((dmaChannelControl[i] & 0x11000000) == 0x11000000)
+					dmaChannelStarted[i] = 0x1;
+				break;
+			default: // Other
+				dmaChannelStarted[i] =
+						logical_rshift(dmaChannelControl[i], 24) & 0x1;
+				break;
+		}
+	}
+
+	// Check if each one is actually enabled
+	int32_t tempControlRegister =
+			((dma->dmaControlRegister << 24) & 0xFF000000) |
+			((dma->dmaControlRegister << 8) & 0xFF0000) |
+			(logical_rshift(dma->dmaControlRegister, 8) & 0xFF00) |
+			(logical_rshift(dma->dmaControlRegister, 24) & 0xFF);
+
+	int32_t highestPriority = 8;
+	int32_t highestPriorityChannelSoFar = -1;
+	for (int32_t i = 0; i < 7; ++i) {
+		switch (dmaChannelStarted[i]) {
+			case 1:
+			{
+				int32_t priority =
+						logical_rshift(tempControlRegister, (i * 4)) & 0x7;
+				int32_t enabled =
+						logical_rshift(tempControlRegister, (i * 4)) & 0x8;
+
+				if (enabled > 0) {
+					if (priority <= highestPriority) {
+						highestPriority = priority;
+						highestPriorityChannelSoFar = i;
+					}
+				}
+			}
+			break;
+		}
+	}
+
+	int32_t cpuCycles = 0;
+
+	// Perform DMA transfer itself if one is needed
+	switch (highestPriorityChannelSoFar) {
+		case -1: // Do nothing
+			break;
+		default: // Do DMA transfer
+			// Set bus holder to DMA Arbiter
+			R3051_setBusHolder(dma->cpu, PHILPSX_COMPONENTS_DMA);
+
+			// Clear bit 28 of channel control register (remember it is
+			// stored in little-endian mode)
+			dma->channelRegisters[highestPriorityChannelSoFar * 3 + 2] &=
+					0xFFFFFFEF;
+
+			// Call correct method depending on channel or mode
+			switch (highestPriorityChannelSoFar) {
+				case 0: // MDECin
+					fprintf(stdout, "PhilPSX: DMAArbiter: MDECin DMA "
+							"triggered\n");
+					break;
+				case 1: // MDECout
+					fprintf(stdout, "PhilPSX: DMAArbiter: MDECout DMA "
+							"triggered\n");
+					break;
+				case 2: // GPU DMA
+					cpuCycles = DMAArbiter_handleGPU(dma);
+					break;
+				case 3: // CD-ROM
+					cpuCycles = DMAArbiter_handleCDROM(dma);
+					break;
+				case 4: // SPU
+					fprintf(stdout, "PhilPSX: DMAArbiter: SPU DMA "
+							"triggered\n");
+					break;
+				case 5: // PIO
+					fprintf(stdout, "PhilPSX: DMAArbiter: PIO DMA "
+							"triggered\n");
+					break;
+				case 6: // OTC DMA
+					cpuCycles = DMAArbiter_handleOTC(dma);
+					break;
+			}
+
+			// Clear bit 24 of channel control register (again, remember
+			// endianness
+			dma->channelRegisters[highestPriorityChannelSoFar * 3 + 2] &=
+					0xFFFFFFFE;
+
+			// Set bus holder back to CPU
+			R3051_setBusHolder(dma->cpu, PHILPSX_COMPONENTS_CPU);
+
+			// Trigger interrupt by masking correct bit (remember endianness)
+			int32_t tempInterruptRegister =
+					((dma->dmaInterruptRegister << 24) & 0xFF000000) |
+					((dma->dmaInterruptRegister << 8) & 0xFF0000) |
+					(logical_rshift(dma->dmaInterruptRegister, 8) & 0xFF00) |
+					(logical_rshift(dma->dmaInterruptRegister, 24) & 0xFF);
+			int32_t intMask = 0x00010000 << highestPriorityChannelSoFar;
+			intMask |= 0x00800000;
+
+			if ((tempInterruptRegister & intMask) == intMask) {
+				intMask = 0x01000000 << highestPriorityChannelSoFar;
+				tempInterruptRegister |= intMask;
+				dma->dmaInterruptRegister =
+						((tempInterruptRegister << 24) & 0xFF000000) |
+						((tempInterruptRegister << 8) & 0xFF0000) |
+						(logical_rshift(tempInterruptRegister, 8) & 0xFF00) |
+						(logical_rshift(tempInterruptRegister, 24) & 0xFF);
+
+				// Set flag in system's Interrupt Status Register
+				SystemInterlink_setDMAInterruptDelay(dma->system, 0);
+			}
+
+			break;
+	}
+
+	//SystemInterlink_appendSyncCycles(dma->system, cpuCycles);
+}
+
+/*
+ * This function handles GPU DMA transfers.
+ */
+static int32_t DMAArbiter_handleGPU(DMAArbiter *dma)
+{
+	// Get DMA base address and correct endianness
+	int32_t baseAddress = dma->channelRegisters[PHILPSX_DMA_GPU * 3];
+	baseAddress = ((baseAddress << 24) & 0xFF000000) |
+			((baseAddress << 8) & 0xFF0000) |
+			(logical_rshift(baseAddress, 8) & 0xFF00) |
+			(logical_rshift(baseAddress, 24) & 0xFF);
+	baseAddress = Cop0_virtualToPhysical(R3051_getCop0(dma->cpu), baseAddress);
+
+	// Get block control and correct endianness
+	int32_t blockControl = dma->channelRegisters[PHILPSX_DMA_GPU * 3 + 1];
+	blockControl = ((blockControl << 24) & 0xFF000000) |
+			((blockControl << 8) & 0xFF0000) |
+			(logical_rshift(blockControl, 8) & 0xFF00) |
+			(logical_rshift(blockControl, 24) & 0xFF);
+
+	// Get channel control register and correct endianness
+	int32_t channelControl = dma->channelRegisters[PHILPSX_DMA_GPU * 3 + 2];
+	channelControl = ((channelControl << 24) & 0xFF000000) |
+			((channelControl << 8) & 0xFF0000) |
+			(logical_rshift(channelControl, 8) & 0xFF00) |
+			(logical_rshift(channelControl, 24) & 0xFF);
+
+	// Act according to specified mode
+	int32_t dmaCycles = 0;
+	switch (logical_rshift((channelControl & 0x600), 9)) {
+		case 1:
+		{
+			// Store base address as long
+			int64_t tempAddress = baseAddress & 0xFFFFFFFFL;
+
+			// Get block size in words
+			int32_t blockSize = 0xFFFF & blockControl;
+			switch (blockSize) {
+				case 0:
+					blockSize = 0x10000;
+					break;
+			}
+
+			// Get number of blocks
+			int32_t numOfBlocks = 0xFFFF & logical_rshift(blockControl, 16);
+			switch (numOfBlocks) {
+				case 0:
+					numOfBlocks = 0x10000;
+					break;
+			}
+
+			// Calculate total number of words and cycles
+			int32_t numOfWords = blockSize * numOfBlocks;
+			dmaCycles = numOfWords;
+
+			// Read from or write to GPU depending on channel control register
+			int32_t writeToGPU = channelControl & 0x1;
+			int32_t backward = logical_rshift(channelControl, 1) & 0x1;
+			switch (writeToGPU) {
+				case 0: // Read from GPU to RAM
+					for (int32_t i = 0; i < numOfWords; ++i) {
+						SystemInterlink_writeWord(
+								dma->system,
+								(int32_t)tempAddress,
+								GPU_readResponse(dma->gpu)
+								);
+						switch (backward) {
+							case 0: // Go forward to next address
+								tempAddress += 4;
+								break;
+							case 1: // Go backward to next address
+								tempAddress -= 4;
+								break;
+						}
+					}
+					break;
+				case 1: // Write to GPU from RAM
+					for (int32_t i = 0; i < numOfWords; ++i) {
+						GPU_submitToGP0(
+								dma->gpu,
+								SystemInterlink_readWord(
+								dma->system,
+								(int32_t)tempAddress)
+								);
+						switch (backward) {
+							case 0: // Go forward to next address
+								tempAddress += 4;
+								break;
+							case 1: // Go backward to next address
+								tempAddress -= 4;
+								break;
+						}
+					}
+					break;
+			}
+
+			// Set BA to 0 directly in register (little-endian) for speed
+			dma->channelRegisters[PHILPSX_DMA_GPU * 3 + 1] &= 0xFFFF0000;
+
+		}
+		break;
+		case 2:
+		{
+			// Iterate over linked list, sending commands to GPU GP0
+			int32_t nextAddress = baseAddress;
+			do {
+				// Store as current address
+				int32_t currentAddress = nextAddress;
+
+				// Read word into nextAddress, update base address
+				// register and correct endianness
+				nextAddress =
+						SystemInterlink_readWord(dma->system, nextAddress);
+				dma->channelRegisters[PHILPSX_DMA_GPU * 3] =
+						nextAddress & 0xFFFFFF00;
+				nextAddress = ((nextAddress << 24) & 0xFF000000) |
+						((nextAddress << 8) & 0xFF0000) |
+						(logical_rshift(nextAddress, 8) & 0xFF00) |
+						(logical_rshift(nextAddress, 24) & 0xFF);
+
+				// Get number of words we need and mask them from nextAddress
+				int32_t numOfWords =
+						logical_rshift((nextAddress & 0xFF000000), 24);
+				nextAddress &= 0xFFFFFF;
+
+				// Iterate current block and send commands
+				for (int32_t i = 1; i <= numOfWords; ++i) {
+					GPU_submitToGP0(
+							dma->gpu,
+							SystemInterlink_readWord(
+							dma->system,
+							currentAddress + i * 4)
+							);
+					++dmaCycles;
+				}
+			} while (nextAddress != 0xFFFFFF);
+		}
+		break;
+		default:
+			fprintf(stderr, "This transfer mode is not implemented for "
+					"GPU DMA\n");
+			exit(1);
+			break;
+	}
+
+	return dmaCycles;
+}
+
+/*
+ * This function handles OTC DMA transfers - it assumes a sync mode of 0.
+ */
+static int32_t DMAArbiter_handleOTC(DMAArbiter *dma)
+{
+	// Get DMA base address and correct endianness
+	int32_t baseAddress = dma->channelRegisters[PHILPSX_DMA_OTC * 3];
+	baseAddress = ((baseAddress << 24) & 0xFF000000) |
+			((baseAddress << 8) & 0xFF0000) |
+			(logical_rshift(baseAddress, 8) & 0xFF00) |
+			(logical_rshift(baseAddress, 24) & 0xFF);
+	baseAddress = Cop0_virtualToPhysical(R3051_getCop0(dma->cpu), baseAddress);
+
+	// Get number of words and correct endianness
+	int32_t numberOfWords = dma->channelRegisters[PHILPSX_DMA_OTC * 3 + 1];
+	numberOfWords = ((numberOfWords << 24) & 0xFF000000) |
+			((numberOfWords << 8) & 0xFF0000) |
+			(logical_rshift(numberOfWords, 8) & 0xFF00) |
+			(logical_rshift(numberOfWords, 24) & 0xFF);
+	numberOfWords &= 0xFFFF;
+	if (numberOfWords == 0)
+		numberOfWords = 0x10000;
+
+	// Calculate time to run system for (1 clock per word for OTC)
+	int32_t dmaCycles = numberOfWords;
+
+	// Perform OTC transfer
+	int64_t currentWord = 0xFFFFFFFFL & baseAddress;
+	int32_t destinationWord = (int32_t)(currentWord - 4L);
+	destinationWord = ((destinationWord << 24) & 0xFF000000) |
+			((destinationWord << 8) & 0xFF0000) |
+			(logical_rshift(destinationWord, 8) & 0xFF00) |
+			(logical_rshift(destinationWord, 24) & 0xFF);
+
+	for (int32_t i = 0; i < numberOfWords - 1; ++i) {
+		SystemInterlink_writeWord(
+				dma->system,
+				(int32_t)currentWord,
+				destinationWord
+				);
+		currentWord -= 4L;
+		destinationWord = (int32_t)(currentWord - 4L);
+		destinationWord = ((destinationWord << 24) & 0xFF000000) |
+				((destinationWord << 8) & 0xFF0000) |
+				(logical_rshift(destinationWord, 8) & 0xFF00) |
+				(logical_rshift(destinationWord, 24) & 0xFF);
+	}
+	SystemInterlink_writeWord(dma->system, (int32_t)currentWord, 0xFFFFFF00);
+
+	// Decrement BC if chopping enabled (detect in little-endian mode
+	// for speed)
+	switch (dma->channelRegisters[PHILPSX_DMA_OTC * 3 + 2] & 0x10000) {
+		case 0x10000:
+			// Set BC (again in little-endian mode for speed) to 0
+			dma->channelRegisters[PHILPSX_DMA_OTC * 3 + 1] &= 0xFFFF;
+			break;
+	}
+
+	return dmaCycles;
 }

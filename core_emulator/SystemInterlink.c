@@ -28,8 +28,6 @@ static bool SystemInterlink_loadBiosFileToMemory(const char *biosPath,
 
 // TimerModule-related stuff:
 typedef struct TimerModule TimerModule;
-static TimerModule *construct_TimerModule(SystemInterlink *smi);
-static void destruct_TimerModule(TimerModule *timerModule);
 static void TimerModule_appendSyncCycles(TimerModule *timerModule,
 		int32_t cycles);
 static int32_t TimerModule_readCounterValue(TimerModule *timerModule,
@@ -50,6 +48,32 @@ static void TimerModule_writeTargetValue(TimerModule *timerModule,
 		int32_t timer, int32_t value);
 
 /*
+ * This struct models all three timers within a single object.
+ */
+struct TimerModule {
+
+	// Reference back to SystemInterlink container object
+	SystemInterlink *smi;
+	
+	// Variables for the three timers
+	int32_t timerMode[3];
+	int32_t timerCounterValue[3];
+	int32_t timerTargetValue[3];
+	int32_t clockSource[3];
+	int32_t incrementBy[3];
+	int32_t newValue[3];
+	bool interruptHappenedOnceOrMore[3];
+
+	// Variables to track CPU cycles and GPU cycles
+	int32_t cpuCyclesToSync[3];
+	int32_t gpuCyclesToSync[3];
+	int32_t cpuTopup[3];
+	int32_t gpuTopup[3];
+	bool hblankHappened[3];
+	bool vblankHappened[3];
+};
+
+/*
  * This struct models the PlayStation components as linked components in a
  * motherboard of sorts.
  */
@@ -62,12 +86,12 @@ struct SystemInterlink {
 	SPU *spu;
 	CDROMDrive *cdrom;
 	ControllerIO *cio;
-	int8_t *ram;
-	int8_t *scratchpad;
-	int8_t *bios;
+	int8_t *ram;		// Allocated dynamically due to size
+	int8_t *scratchpad;	// Allocated dynamically due to size
+	int8_t *bios;		// Allocated dynamically due to size
 
 	// Timers declaration
-	TimerModule *timerModule;
+	TimerModule timerModule;
 
 	// Register declarations
 	int32_t cacheControlReg;
@@ -93,37 +117,11 @@ struct SystemInterlink {
 	int64_t gpuInterruptCounter;
 	int64_t dmaInterruptCounter;
 	int64_t cdromInterruptCounter;
-	int64_t *timersInterruptDelay;
-	int64_t *timersInterruptCounter;
+	int64_t timersInterruptDelay[3];
+	int64_t timersInterruptCounter[3];
 	int32_t cdromInterruptNumber;
 	bool cdromInterruptEnabled;
 	int32_t interruptCycles;
-};
-
-/*
- * This struct models all three timers within a single object.
- */
-struct TimerModule {
-
-	// Reference back to SystemInterlink container object
-	SystemInterlink *smi;
-	
-	// Variables for the three timers
-	int32_t *timerMode;
-	int32_t *timerCounterValue;
-	int32_t *timerTargetValue;
-	int32_t *clockSource;
-	int32_t *incrementBy;
-	int32_t *newValue;
-	bool *interruptHappenedOnceOrMore;
-
-	// Variables to track CPU cycles and GPU cycles
-	int32_t *cpuCyclesToSync;
-	int32_t *gpuCyclesToSync;
-	int32_t *cpuTopup;
-	int32_t *gpuTopup;
-	bool *hblankHappened;
-	bool *vblankHappened;
 };
 
 /*
@@ -164,36 +162,16 @@ SystemInterlink *construct_SystemInterlink(const char *biosPath)
 		goto cleanup_bios;
 	}
 	
-	// Allocate timersInterruptDelay
-	smi->timersInterruptDelay = malloc(sizeof(int64_t) * 3);
-	if (!smi->timersInterruptDelay) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: Couldn't allocate memory "
-				"for timersInterruptDelay array\n");
-		goto cleanup_scratchpad;
-	}
-	
-	// Allocate timersInterruptCounter
-	smi->timersInterruptCounter = malloc(sizeof(int64_t) * 3);
-	if (!smi->timersInterruptCounter) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: Couldn't allocate memory "
-				"for timersInterruptCounter array\n");
-		goto cleanup_timersinterruptdelay;
-	}
-	
-	// Allocate timer module
-	smi->timerModule = construct_TimerModule(smi);
-	if (!smi->timerModule) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: Couldn't construct "
-				"TimerModule object\n");
-		goto cleanup_timersinterruptcounter;
-	}
-	
 	// Load BIOS
 	if (!SystemInterlink_loadBiosFileToMemory(biosPath, smi->bios)) {
 		fprintf(stderr, "PhilPSX: SystemInterlink: Couldn't copy BIOS data "
 				"to memory\n");
-		goto cleanup_timermodule;
+		goto cleanup_scratchpad;
 	}
+	
+	// Zero out timer module and set interlink reference
+	memset(&smi->timerModule, 0, sizeof(smi->timerModule));
+	smi->timerModule.smi = smi;
 	
 	// Set all component references to NULL
 	smi->dma = NULL;
@@ -238,15 +216,6 @@ SystemInterlink *construct_SystemInterlink(const char *biosPath)
 	return smi;
 	
 	// Cleanup path:
-	cleanup_timermodule:
-	destruct_TimerModule(smi->timerModule);
-	
-	cleanup_timersinterruptcounter:
-	free(smi->timersInterruptCounter);
-	
-	cleanup_timersinterruptdelay:
-	free(smi->timersInterruptDelay);
-	
 	cleanup_scratchpad:
 	free(smi->scratchpad);
 	
@@ -269,9 +238,6 @@ SystemInterlink *construct_SystemInterlink(const char *biosPath)
  */
 void destruct_SystemInterlink(SystemInterlink *smi)
 {
-	destruct_TimerModule(smi->timerModule);
-	free(smi->timersInterruptCounter);
-	free(smi->timersInterruptDelay);
 	free(smi->scratchpad);
 	free(smi->bios);
 	free(smi->ram);
@@ -286,7 +252,7 @@ void SystemInterlink_appendSyncCycles(SystemInterlink *smi, int32_t cycles)
 	smi->interruptCycles += cycles;
 	GPU_appendSyncCycles(smi->gpu, cycles);
 	ControllerIO_appendSyncCycles(smi->cio, cycles);
-	TimerModule_appendSyncCycles(smi->timerModule, cycles);
+	TimerModule_appendSyncCycles(&smi->timerModule, cycles);
 }
 
 /*
@@ -838,7 +804,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0),
 								24
 								);
@@ -846,7 +812,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0),
 								16
 								);
@@ -854,14 +820,14 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0),
 								8
 								);
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0
 								);
 						break;
@@ -873,7 +839,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								0,
 								false),
 								24
@@ -882,7 +848,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								0,
 								false),
 								16
@@ -891,7 +857,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								0,
 								false),
 								8
@@ -899,7 +865,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								0,
 								false
 								);
@@ -912,7 +878,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0),
 								24
 								);
@@ -920,7 +886,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0),
 								16
 								);
@@ -928,14 +894,14 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0),
 								8
 								);
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								0
 								);
 						break;
@@ -947,7 +913,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1),
 								24
 								);
@@ -955,7 +921,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1),
 								16
 								);
@@ -963,14 +929,14 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1),
 								8
 								);
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1
 								);
 						break;
@@ -982,7 +948,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								1,
 								false),
 								24
@@ -991,7 +957,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								1,
 								false),
 								16
@@ -1000,7 +966,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								1,
 								false),
 								8
@@ -1008,7 +974,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								1,
 								false
 								);
@@ -1021,7 +987,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1),
 								24
 								);
@@ -1029,7 +995,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1),
 								16
 								);
@@ -1037,14 +1003,14 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1),
 								8
 								);
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								1
 								);
 						break;
@@ -1056,7 +1022,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2),
 								24
 								);
@@ -1064,7 +1030,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2),
 								16
 								);
@@ -1072,14 +1038,14 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2),
 								8
 								);
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readCounterValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2
 								);
 						break;
@@ -1091,7 +1057,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								2,
 								false),
 								24
@@ -1100,7 +1066,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								2,
 								false),
 								16
@@ -1109,7 +1075,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								2,
 								false),
 								8
@@ -1117,7 +1083,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readMode(
-								smi->timerModule,
+								&smi->timerModule,
 								2,
 								false
 								);
@@ -1130,7 +1096,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 0:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2),
 								24
 								);
@@ -1138,7 +1104,7 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 1:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2),
 								16
 								);
@@ -1146,14 +1112,14 @@ int8_t SystemInterlink_readByte(SystemInterlink *smi, int32_t address)
 					case 2:
 						retVal = (int8_t)logical_rshift(
 								TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2),
 								8
 								);
 						break;
 					case 3:
 						retVal = (int8_t)TimerModule_readTargetValue(
-								smi->timerModule,
+								&smi->timerModule,
 								2
 								);
 						break;
@@ -1455,31 +1421,31 @@ int32_t SystemInterlink_readWord(SystemInterlink *smi, int32_t address)
 				retVal = DMAArbiter_readWord(smi->dma, address);
 				break;
 			case 0x1F801100:
-				retVal = TimerModule_readCounterValue(smi->timerModule, 0);
+				retVal = TimerModule_readCounterValue(&smi->timerModule, 0);
 				break;
 			case 0x1F801104:
-				retVal = TimerModule_readMode(smi->timerModule, 0, false);
+				retVal = TimerModule_readMode(&smi->timerModule, 0, false);
 				break;
 			case 0x1F801108:
-				retVal = TimerModule_readTargetValue(smi->timerModule, 0);
+				retVal = TimerModule_readTargetValue(&smi->timerModule, 0);
 				break;
 			case 0x1F801110:
-				retVal = TimerModule_readCounterValue(smi->timerModule, 1);
+				retVal = TimerModule_readCounterValue(&smi->timerModule, 1);
 				break;
 			case 0x1F801114:
-				retVal = TimerModule_readMode(smi->timerModule, 1, false);
+				retVal = TimerModule_readMode(&smi->timerModule, 1, false);
 				break;
 			case 0x1F801118:
-				retVal = TimerModule_readTargetValue(smi->timerModule, 1);
+				retVal = TimerModule_readTargetValue(&smi->timerModule, 1);
 				break;
 			case 0x1F801120:
-				retVal = TimerModule_readCounterValue(smi->timerModule, 2);
+				retVal = TimerModule_readCounterValue(&smi->timerModule, 2);
 				break;
 			case 0x1F801124:
-				retVal = TimerModule_readMode(smi->timerModule, 2, false);
+				retVal = TimerModule_readMode(&smi->timerModule, 2, false);
 				break;
 			case 0x1F801128:
-				retVal = TimerModule_readTargetValue(smi->timerModule, 2);
+				retVal = TimerModule_readTargetValue(&smi->timerModule, 2);
 				break;
 			case 0x1F801000:
 				retVal = smi->expansion1BaseAddress;
@@ -1548,7 +1514,7 @@ int32_t SystemInterlink_readWord(SystemInterlink *smi, int32_t address)
  */
 void SystemInterlink_resyncAllTimers(SystemInterlink *smi)
 {
-	TimerModule_resync(smi->timerModule);
+	TimerModule_resync(&smi->timerModule);
 }
 
 /*
@@ -1875,16 +1841,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeCounterValue(
-							smi->timerModule,
+							&smi->timerModule,
 							0,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeCounterValue(
-							smi->timerModule,
+							&smi->timerModule,
 							0,
-							(TimerModule_readCounterValue(smi->timerModule, 0)
+							(TimerModule_readCounterValue(&smi->timerModule, 0)
 							& 0xFF000000) | 
 							((value & 0xFF) << 16)
 							);
@@ -1896,16 +1862,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeMode(
-							smi->timerModule,
+							&smi->timerModule,
 							0,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeMode(
-							smi->timerModule,
+							&smi->timerModule,
 							0,
-							(TimerModule_readMode(smi->timerModule, 0, true)
+							(TimerModule_readMode(&smi->timerModule, 0, true)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -1917,16 +1883,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeTargetValue(
-							smi->timerModule,
+							&smi->timerModule,
 							0,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeTargetValue(
-							smi->timerModule,
+							&smi->timerModule,
 							0,
-							(TimerModule_readTargetValue(smi->timerModule, 0)
+							(TimerModule_readTargetValue(&smi->timerModule, 0)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -1938,16 +1904,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeCounterValue(
-							smi->timerModule,
+							&smi->timerModule,
 							1,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeCounterValue(
-							smi->timerModule,
+							&smi->timerModule,
 							1,
-							(TimerModule_readCounterValue(smi->timerModule, 1)
+							(TimerModule_readCounterValue(&smi->timerModule, 1)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -1959,16 +1925,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeMode(
-							smi->timerModule,
+							&smi->timerModule,
 							1,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeMode(
-							smi->timerModule,
+							&smi->timerModule,
 							1,
-							(TimerModule_readMode(smi->timerModule, 1, true)
+							(TimerModule_readMode(&smi->timerModule, 1, true)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -1980,16 +1946,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeTargetValue(
-							smi->timerModule,
+							&smi->timerModule,
 							1,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeTargetValue(
-							smi->timerModule,
+							&smi->timerModule,
 							1,
-							(TimerModule_readTargetValue(smi->timerModule, 1)
+							(TimerModule_readTargetValue(&smi->timerModule, 1)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -2001,16 +1967,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeCounterValue(
-							smi->timerModule,
+							&smi->timerModule,
 							2,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeCounterValue(
-							smi->timerModule,
+							&smi->timerModule,
 							2,
-							(TimerModule_readCounterValue(smi->timerModule, 2)
+							(TimerModule_readCounterValue(&smi->timerModule, 2)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -2022,16 +1988,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeMode(
-							smi->timerModule,
+							&smi->timerModule,
 							2,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeMode(
-							smi->timerModule,
+							&smi->timerModule,
 							2,
-							(TimerModule_readMode(smi->timerModule, 2, true)
+							(TimerModule_readMode(&smi->timerModule, 2, true)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -2043,16 +2009,16 @@ void SystemInterlink_writeByte(SystemInterlink *smi, int32_t address,
 			switch (shift) {
 				case 0:
 					TimerModule_writeTargetValue(
-							smi->timerModule,
+							&smi->timerModule,
 							2,
 							(value & 0xFF) << 24
 							);
 					break;
 				case 1:
 					TimerModule_writeTargetValue(
-							smi->timerModule,
+							&smi->timerModule,
 							2,
-							(TimerModule_readTargetValue(smi->timerModule, 2)
+							(TimerModule_readTargetValue(&smi->timerModule, 2)
 							& 0xFF000000) |
 							((value & 0xFF) << 16)
 							);
@@ -2283,31 +2249,31 @@ void SystemInterlink_writeWord(SystemInterlink *smi, int32_t address,
 				DMAArbiter_writeWord(smi->dma, address, word);
 				break;
 			case 0x1F801100:
-				TimerModule_writeCounterValue(smi->timerModule, 0, word);
+				TimerModule_writeCounterValue(&smi->timerModule, 0, word);
 				break;
 			case 0x1F801104:
-				TimerModule_writeMode(smi->timerModule, 0, word);
+				TimerModule_writeMode(&smi->timerModule, 0, word);
 				break;
 			case 0x1F801108:
-				TimerModule_writeTargetValue(smi->timerModule, 0, word);
+				TimerModule_writeTargetValue(&smi->timerModule, 0, word);
 				break;
 			case 0x1F801110:
-				TimerModule_writeCounterValue(smi->timerModule, 1, word);
+				TimerModule_writeCounterValue(&smi->timerModule, 1, word);
 				break;
 			case 0x1F801114:
-				TimerModule_writeMode(smi->timerModule, 1, word);
+				TimerModule_writeMode(&smi->timerModule, 1, word);
 				break;
 			case 0x1F801118:
-				TimerModule_writeTargetValue(smi->timerModule, 1, word);
+				TimerModule_writeTargetValue(&smi->timerModule, 1, word);
 				break;
 			case 0x1F801120:
-				TimerModule_writeCounterValue(smi->timerModule, 2, word);
+				TimerModule_writeCounterValue(&smi->timerModule, 2, word);
 				break;
 			case 0x1F801124:
-				TimerModule_writeMode(smi->timerModule, 2, word);
+				TimerModule_writeMode(&smi->timerModule, 2, word);
 				break;
 			case 0x1F801128:
-				TimerModule_writeTargetValue(smi->timerModule, 2, word);
+				TimerModule_writeTargetValue(&smi->timerModule, 2, word);
 				break;
 			case 0x1F801000:
 				smi->expansion1BaseAddress = word;
@@ -2446,183 +2412,6 @@ static bool SystemInterlink_loadBiosFileToMemory(const char *biosPath,
 	
 	end:
 	return retVal;
-}
-
-/*
- * This constructor creates all three timer objects with default values.
- */
-static TimerModule *construct_TimerModule(SystemInterlink *smi)
-{
-	// Allocate TimerModule struct
-	TimerModule *timerModule = malloc(sizeof(TimerModule));
-	if (!timerModule) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for TimerModule struct\n");
-		goto end;
-	}
-
-	// Set reference to host object
-	timerModule->smi = smi;
-	
-	// Initialise everything to zero
-	timerModule->timerMode = calloc(3, sizeof(int32_t));
-	if (!timerModule->timerMode) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for timerMode array\n");
-		goto cleanup_timermodule;
-	}
-	
-	timerModule->timerCounterValue = calloc(3, sizeof(int32_t));
-	if (!timerModule->timerCounterValue) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for timerCounterValue array\n");
-		goto cleanup_timermode;
-	}
-	
-	timerModule->timerTargetValue = calloc(3, sizeof(int32_t));
-	if (!timerModule->timerTargetValue) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for timerTargetValue array\n");
-		goto cleanup_timercountervalue;
-	}
-	
-	timerModule->clockSource = calloc(3, sizeof(int32_t));
-	if (!timerModule->clockSource) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for clockSource array\n");
-		goto cleanup_timertargetvalue;
-	}
-	
-	timerModule->incrementBy = calloc(3, sizeof(int32_t));
-	if (!timerModule->incrementBy) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for incrementBy array\n");
-		goto cleanup_clocksource;
-	}
-	
-	timerModule->newValue = calloc(3, sizeof(int32_t));
-	if (!timerModule->newValue) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for newValue array\n");
-		goto cleanup_incrementby;
-	}
-	
-	timerModule->interruptHappenedOnceOrMore = calloc(3, sizeof(bool));
-	if (!timerModule->interruptHappenedOnceOrMore) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for interruptHappenedOnceOrMore array\n");
-		goto cleanup_newvalue;
-	}
-	
-	timerModule->cpuCyclesToSync = calloc(3, sizeof(int32_t));
-	if (!timerModule->cpuCyclesToSync) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for cpuCyclesToSync array\n");
-		goto cleanup_interrupthappenedonceormore;
-	}
-	
-	timerModule->gpuCyclesToSync = calloc(3, sizeof(int32_t));
-	if (!timerModule->gpuCyclesToSync) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for gpuCyclesToSync array\n");
-		goto cleanup_cpucyclestosync;
-	}
-	
-	timerModule->cpuTopup = calloc(3, sizeof(int32_t));
-	if (!timerModule->cpuTopup) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for cpuTopup array\n");
-		goto cleanup_gpucyclestosync;
-	}
-	
-	timerModule->gpuTopup = calloc(3, sizeof(int32_t));
-	if (!timerModule->gpuTopup) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for gpuTopup array\n");
-		goto cleanup_cputopup;
-	}
-	
-	timerModule->hblankHappened = calloc(3, sizeof(bool));
-	if (!timerModule->hblankHappened) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for hblankHappened array\n");
-		goto cleanup_gputopup;
-	}
-	
-	timerModule->vblankHappened = calloc(3, sizeof(bool));
-	if (!timerModule->vblankHappened) {
-		fprintf(stderr, "PhilPSX: SystemInterlink: TimerModule: Couldn't "
-				"allocate memory for vblankHappened array\n");
-		goto cleanup_hblankhappened;
-	}
-		
-	// Normal return:
-	return timerModule;
-	
-	// Cleanup path:
-	cleanup_hblankhappened:
-	free(timerModule->hblankHappened);
-	
-	cleanup_gputopup:
-	free(timerModule->gpuTopup);
-	
-	cleanup_cputopup:
-	free(timerModule->cpuTopup);
-	
-	cleanup_gpucyclestosync:
-	free(timerModule->gpuCyclesToSync);
-	
-	cleanup_cpucyclestosync:
-	free(timerModule->cpuCyclesToSync);
-	
-	cleanup_interrupthappenedonceormore:
-	free(timerModule->interruptHappenedOnceOrMore);
-	
-	cleanup_newvalue:
-	free(timerModule->newValue);
-	
-	cleanup_incrementby:
-	free(timerModule->incrementBy);
-	
-	cleanup_clocksource:
-	free(timerModule->clockSource);
-	
-	cleanup_timertargetvalue:
-	free(timerModule->timerTargetValue);
-	
-	cleanup_timercountervalue:
-	free(timerModule->timerCounterValue);
-	
-	cleanup_timermode:
-	free(timerModule->timerMode);
-	
-	cleanup_timermodule:
-	free(timerModule);
-	timerModule = NULL;
-	
-	end:
-	return timerModule;
-}
-
-/*
- * This function destructs a TimerModule object.
- */
-static void destruct_TimerModule(TimerModule *timerModule)
-{
-	free(timerModule->vblankHappened);
-	free(timerModule->hblankHappened);
-	free(timerModule->gpuTopup);
-	free(timerModule->cpuTopup);
-	free(timerModule->gpuCyclesToSync);
-	free(timerModule->cpuCyclesToSync);
-	free(timerModule->interruptHappenedOnceOrMore);
-	free(timerModule->newValue);
-	free(timerModule->incrementBy);
-	free(timerModule->clockSource);
-	free(timerModule->timerTargetValue);
-	free(timerModule->timerCounterValue);
-	free(timerModule->timerMode);
-	free(timerModule);
 }
 
 /*

@@ -8,7 +8,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../headers/Cop2.h"
+#include <string.h>
+#include "../headers/Cop2_all.h"
 #include "../headers/math_utils.h"
 
 // Unsigned Newton-Raphson algorithm array - values taken from NOPSX 
@@ -63,74 +64,17 @@ static void Cop2_handleGPL(Cop2 *gte, int32_t opcode);
 static void Cop2_handleNCCT(Cop2 *gte, int32_t opcode);
 
 /*
- * The Cop2 struct models the Geometry Transformation Engine, which is a
- * co-processor in the PlayStation responsible for matrix calculations amongst
- * other things.
+ * This constructs a Cop2 object using the pre-allocated struct referenced by
+ * gte.
  */
-struct Cop2 {
-	// Control registers
-	int32_t *controlRegisters;
-
-	// Data registers
-	int32_t *dataRegisters;
-
-	// Condition line
-	bool conditionLine;
-};
-
-/*
- * This constructs a Cop2 object.
- */
-Cop2 *construct_Cop2(void)
+void construct_Cop2(Cop2 *gte)
 {
-	// Allocate Cop2 struct
-	Cop2 *gte = malloc(sizeof(Cop2));
-	if (!gte) {
-		fprintf(stderr, "PhilPSX: Cop2: Couldn't allocate memory for "
-				"Cop2 struct\n");
-		goto end;
-	}
-
-	// Setup register arrays
-	gte->controlRegisters = calloc(32, sizeof(int32_t));
-	if (!gte->controlRegisters) {
-		fprintf(stderr, "PhilPSX: Cop2: Couldn't allocate memory for "
-				"controlRegisters array\n");
-		goto cleanup_cop2;
-	}
-	gte->dataRegisters = calloc(32, sizeof(int32_t));
-	if (!gte->dataRegisters) {
-		fprintf(stderr, "PhilPSX: Cop2: Couldn't allocate memory for "
-				"dataRegisters array\n");
-		goto cleanup_creg;
-	}
+	// Zero out register arrays
+	memset(gte->controlRegisters, 0, sizeof(gte->controlRegisters));
+	memset(gte->dataRegisters, 0, sizeof(gte->dataRegisters));
 
 	// Reset
 	Cop2_reset(gte);
-
-	// Normal return:
-	return gte;
-
-	// Cleanup path:
-cleanup_creg:
-	free(gte->controlRegisters);
-
-cleanup_cop2:
-	free(gte);
-	gte = NULL;
-
-end:
-	return gte;
-}
-
-/*
- * This destructs a Cop2 object.
- */
-void destruct_Cop2(Cop2 *gte)
-{
-	free(gte->dataRegisters);
-	free(gte->controlRegisters);
-	free(gte);
 }
 
 /*

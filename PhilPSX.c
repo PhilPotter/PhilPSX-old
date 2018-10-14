@@ -350,7 +350,6 @@ static bool setupEmu(Console *console, int numOfArgs, char **args,
 	DMAArbiter_setCpu(console->dma, console->cpu);
 	DMAArbiter_setGpu(console->dma, console->gpu);
 	DMAArbiter_setCdrom(console->dma, console->cdrom);
-	DMAArbiter_setBiu(console->dma, R3051_getBiu(console->cpu));
 	
 	// Set work queue reference in GPU
 	GPU_setWorkQueue(console->gpu, wq);
