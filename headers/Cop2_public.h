@@ -18,8 +18,7 @@ typedef struct Cop2 Cop2;
 void construct_Cop2(Cop2 *gte); // Needs a pre-allocated memory region
 void Cop2_reset(Cop2 *gte);
 bool Cop2_getConditionLineStatus(Cop2 *gte);
-void Cop2_gteFunction(Cop2 *gte, int32_t opcode);
-int32_t Cop2_gteGetCycles(Cop2 *gte, int32_t opcode);
+int32_t Cop2_gteFunction(Cop2 *gte, int32_t opcode);
 int32_t Cop2_readControlReg(Cop2 *gte, int32_t reg);
 int32_t Cop2_readDataReg(Cop2 *gte, int32_t reg);
 void Cop2_writeControlReg(Cop2 *gte, int32_t reg, int32_t value, bool override);

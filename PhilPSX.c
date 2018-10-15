@@ -5,8 +5,12 @@
  * 
  * PhilPSX.c - Copyright Phillip Potter, 2018
  */
+
+/* Included for profiling purposes*/
 #define _POSIX_C_SOURCE 200809L
 #include <time.h>
+#include <gperftools/profiler.h>
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -485,6 +489,10 @@ static void *emulatorFunction(void *arg)
 	struct timespec t1, t2;
 	int64_t cycles = 0;
 	clock_gettime(CLOCK_REALTIME, &t1);
+	
+	// Start gperftools log
+	ProfilerStart("philpsx_emulator_thread.log");
+	
 	while (true) {
 		
 		// Check if we need to quit
@@ -506,7 +514,8 @@ static void *emulatorFunction(void *arg)
 			cycles -= 33868800;
 		}
 	}
-	
+	ProfilerStop();
+
 	end:
 	fprintf(stdout, "PhilPSX: Ended emulator thread\n");
 	

@@ -96,186 +96,108 @@ bool Cop2_getConditionLineStatus(Cop2 *gte)
 
 /*
  * This function deals with GTE functions that are handed to COP2 from the CPU.
+ * It returns the number of cycles each one should take.
  */
-void Cop2_gteFunction(Cop2 *gte, int32_t opcode)
+int32_t Cop2_gteFunction(Cop2 *gte, int32_t opcode)
 {
+	// Cycles to return
+	int32_t cycles = 0;
+	
 	// Determine which function to handle
 	switch (opcode & 0x3F) {
 		case 0x01:
 			Cop2_handleRTPS(gte, opcode);
+			cycles = 15;
 			break;
 		case 0x06:
 			Cop2_handleNCLIP(gte, opcode);
+			cycles = 8;
 			break;
 		case 0x0C:
 			Cop2_handleOP(gte, opcode);
+			cycles = 6;
 			break;
 		case 0x10:
 			Cop2_handleDPCS(gte, opcode);
+			cycles = 8;
 			break;
 		case 0x11:
 			Cop2_handleINTPL(gte, opcode);
+			cycles = 8;
 			break;
 		case 0x12:
 			Cop2_handleMVMVA(gte, opcode);
+			cycles = 8;
 			break;
 		case 0x13:
 			Cop2_handleNCDS(gte, opcode);
+			cycles = 19;
 			break;
 		case 0x14:
 			Cop2_handleCDP(gte, opcode);
+			cycles = 13;
 			break;
 		case 0x16:
 			Cop2_handleNCDT(gte, opcode);
+			cycles = 44;
 			break;
 		case 0x1B:
 			Cop2_handleNCCS(gte, opcode);
+			cycles = 17;
 			break;
 		case 0x1C:
 			Cop2_handleCC(gte, opcode);
+			cycles = 11;
 			break;
 		case 0x1E:
 			Cop2_handleNCS(gte, opcode);
+			cycles = 14;
 			break;
 		case 0x20:
 			Cop2_handleNCT(gte, opcode);
+			cycles = 30;
 			break;
 		case 0x28:
 			Cop2_handleSQR(gte, opcode);
+			cycles = 5;
 			break;
 		case 0x29:
 			Cop2_handleDCPL(gte, opcode);
+			cycles = 8;
 			break;
 		case 0x2A:
 			Cop2_handleDPCT(gte, opcode);
+			cycles = 17;
 			break;
 		case 0x2D:
 			Cop2_handleAVSZ3(gte, opcode);
+			cycles = 5;
 			break;
 		case 0x2E:
 			Cop2_handleAVSZ4(gte, opcode);
+			cycles = 6;
 			break;
 		case 0x30:
 			Cop2_handleRTPT(gte, opcode);
+			cycles = 23;
 			break;
 		case 0x3D:
 			Cop2_handleGPF(gte, opcode);
+			cycles = 5;
 			break;
 		case 0x3E:
 			Cop2_handleGPL(gte, opcode);
+			cycles = 5;
 			break;
 		case 0x3F:
 			Cop2_handleNCCT(gte, opcode);
+			cycles = 39;
 			break;
 		default:
 			break;
 	}
-}
-
-/*
- * This function returns the number of cycles for the specified GTE function.
- */
-int32_t Cop2_gteGetCycles(Cop2 *gte, int32_t opcode)
-{
-	// Define return value
-	int32_t retVal = 0;
-
-	// Determine which function to return cycles for
-	switch (opcode & 0x3F) {
-		case 0x01:
-			// RTPS
-			retVal = 15;
-			break;
-		case 0x06:
-			// NCLIP
-			retVal = 8;
-			break;
-		case 0x0C:
-			// OP
-			retVal = 6;
-			break;
-		case 0x10:
-			// DPCS
-			retVal = 8;
-			break;
-		case 0x11:
-			// INTPL
-			retVal = 8;
-			break;
-		case 0x12:
-			// MVMVA
-			retVal = 8;
-			break;
-		case 0x13:
-			// NCDS
-			retVal = 19;
-			break;
-		case 0x14:
-			// CDP
-			retVal = 13;
-			break;
-		case 0x16:
-			// NCDT
-			retVal = 44;
-			break;
-		case 0x1B:
-			// NCCS
-			retVal = 17;
-			break;
-		case 0x1C:
-			// CC
-			retVal = 11;
-			break;
-		case 0x1E:
-			// NCS
-			retVal = 14;
-			break;
-		case 0x20:
-			// NCT
-			retVal = 30;
-			break;
-		case 0x28:
-			// SQR
-			retVal = 5;
-			break;
-		case 0x29:
-			// DCPL
-			retVal = 8;
-			break;
-		case 0x2A:
-			// DPCT
-			retVal = 17;
-			break;
-		case 0x2D:
-			// AVSZ3
-			retVal = 5;
-			break;
-		case 0x2E:
-			// AVSZ4
-			retVal = 6;
-			break;
-		case 0x30:
-			// RTPT
-			retVal = 23;
-			break;
-		case 0x3D:
-			// GPF
-			retVal = 5;
-			break;
-		case 0x3E:
-			// GPL
-			retVal = 5;
-			break;
-		case 0x3F:
-			// NCCT
-			retVal = 39;
-			break;
-		default:
-			break;
-	}
-
-	// Return number of cycles
-	return retVal;
+	
+	return cycles;
 }
 
 /*

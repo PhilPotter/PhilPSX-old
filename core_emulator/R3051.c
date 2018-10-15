@@ -179,6 +179,7 @@ struct R3051 {
 
 	// This counts the cycles of the current instruction
 	int32_t cycles;
+	int32_t gteCycles;
 	int64_t totalCycles;
 };
 
@@ -203,6 +204,7 @@ R3051 *construct_R3051(void)
 
 	// Setup instruction cycle count
 	cpu->cycles = 0;
+	cpu->gteCycles = 0;
 	cpu->totalCycles = 0;
 
 	// Setup registers (remember, r1 should always be 0)
@@ -325,8 +327,9 @@ int64_t R3051_executeInstructions(R3051 *cpu)
 		}
 
 		// Increment cycle count
-		cpu->cycles += 1;
-		cpu->totalCycles += 1;
+		cpu->cycles += (cpu->gteCycles == 0) ? 1 : cpu->gteCycles;
+		cpu->totalCycles += (cpu->gteCycles == 0) ? 1 : cpu->gteCycles;
+		cpu->gteCycles = 0;
 
 		// Setup whether the instruction just gone was a branch, and clear
 		// current branch status
@@ -2501,7 +2504,7 @@ static void R3051_executeOpcode(R3051 *cpu, int32_t instruction,
 				case 30:
 				case 31:
 					// Co-processor specific
-					Cop2_gteFunction(&cpu->gte, instruction);
+					cpu->gteCycles = Cop2_gteFunction(&cpu->gte, instruction);
 					break;
 			}
 		}
