@@ -179,6 +179,7 @@ struct R3051 {
 
 	// This counts the cycles of the current instruction
 	int32_t cycles;
+	int64_t totalCycles;
 };
 
 /*
@@ -202,6 +203,7 @@ R3051 *construct_R3051(void)
 
 	// Setup instruction cycle count
 	cpu->cycles = 0;
+	cpu->totalCycles = 0;
 
 	// Setup registers (remember, r1 should always be 0)
 	memset(cpu->generalRegisters, 0, sizeof(cpu->generalRegisters));
@@ -262,7 +264,7 @@ void destruct_R3051(R3051 *cpu)
 /*
  * This function moves the whole processor on by one block of instructions.
  */
-void R3051_executeInstructions(R3051 *cpu)
+int64_t R3051_executeInstructions(R3051 *cpu)
 {
 	// Enter loop
 	do {
@@ -282,6 +284,7 @@ void R3051_executeInstructions(R3051 *cpu)
 				);
 		if (tempInstruction == -1L) {
 			cpu->cycles += 1;
+			cpu->totalCycles += 1;
 			SystemInterlink_appendSyncCycles(cpu->system, cpu->cycles);
 			continue;
 		}
@@ -299,6 +302,7 @@ void R3051_executeInstructions(R3051 *cpu)
 		// Handle exception if there was one
 		if (R3051_handleException(cpu)) {
 			cpu->cycles += 1;
+			cpu->totalCycles += 1;
 			SystemInterlink_appendSyncCycles(cpu->system, cpu->cycles);
 			continue;
 		}
@@ -306,6 +310,7 @@ void R3051_executeInstructions(R3051 *cpu)
 		// Handle interrupt if there was one
 		if (cpu->isBranch && R3051_handleInterrupts(cpu)) {
 			cpu->cycles += 1;
+			cpu->totalCycles += 1;
 			SystemInterlink_appendSyncCycles(cpu->system, cpu->cycles);
 			continue;
 		}
@@ -321,6 +326,7 @@ void R3051_executeInstructions(R3051 *cpu)
 
 		// Increment cycle count
 		cpu->cycles += 1;
+		cpu->totalCycles += 1;
 
 		// Setup whether the instruction just gone was a branch, and clear
 		// current branch status
@@ -330,6 +336,11 @@ void R3051_executeInstructions(R3051 *cpu)
 		// Return number of cycles instruction took
 		SystemInterlink_appendSyncCycles(cpu->system, cpu->cycles);
 	} while (!cpu->prevWasBranch);
+	
+	// Return cycle count for this block after resetting it in the CPU object
+	int64_t retVal = cpu->totalCycles;
+	cpu->totalCycles = 0;
+	return retVal;
 }
 
 /*

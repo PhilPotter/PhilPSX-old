@@ -5,6 +5,8 @@
  * 
  * PhilPSX.c - Copyright Phillip Potter, 2018
  */
+#define _POSIX_C_SOURCE 200809L
+#include <time.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -480,7 +482,9 @@ static void *emulatorFunction(void *arg)
 	bool emulatorQuit;
 	
 	// Enter emulation loop
-	int32_t count = 0;
+	struct timespec t1, t2;
+	int64_t cycles = 0;
+	clock_gettime(CLOCK_REALTIME, &t1);
 	while (true) {
 		
 		// Check if we need to quit
@@ -491,7 +495,16 @@ static void *emulatorFunction(void *arg)
 			goto end;
 		
 		// Move the emulator on by one block of R3051 instructions
-		R3051_executeInstructions(console->cpu);
+		cycles += R3051_executeInstructions(console->cpu);
+		if (cycles >= 33868800) {
+			clock_gettime(CLOCK_REALTIME, &t2);
+			int64_t t1_ms = t1.tv_sec * 1000 + t1.tv_nsec / 1000000;
+			int64_t t2_ms = t2.tv_sec * 1000 + t2.tv_nsec / 1000000;
+			int64_t ms = t2_ms - t1_ms;
+			printf("Time to emulate one second of R3051 time: %ld\n", ms);
+			clock_gettime(CLOCK_REALTIME, &t1);
+			cycles -= 33868800;
+		}
 	}
 	
 	end:
