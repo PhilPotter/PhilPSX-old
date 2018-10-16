@@ -406,29 +406,29 @@ void GPU_cleanupGL(GPU *gpu)
 void GPU_executeGPUCycles(GPU *gpu)
 {
 	// Convert CPU cycles to GPU cycles
-	gpu->cpuCycles = gpu->cpuCycles / 7 * 11;
+	int32_t newGpuCycles = gpu->gpuCycles + gpu->cpuCycles * 11 / 7;
 
-	// Iterate through cycle increase
-	for (int32_t i = 0; i < gpu->cpuCycles; ++i) {
-		++gpu->gpuCycles;
-		if (gpu->gpuCycles > GPU_CYCLES_PER_FRAME) {
-			gpu->gpuCycles -= GPU_CYCLES_PER_FRAME;
-			switch (gpu->oddOrEven) {
-				case 0:
-					gpu->oddOrEven = 1;
-					break;
-				case 1:
-					gpu->oddOrEven = 0;
-					break;
-			}
-			gpu->vblankTriggered = false;
-		} else if (gpu->gpuCycles > GPU_CYCLES_VBLANK &&
-				!gpu->vblankTriggered) {
-			GPU_triggerVblankInterrupt(gpu);
-			gpu->vblankTriggered = true;
-		}
+	// Test if we need to trigger a vblank interrupt
+	if (newGpuCycles > GPU_CYCLES_VBLANK && !gpu->vblankTriggered) {
+		gpu->vblankTriggered = true;
+		GPU_triggerVblankInterrupt(gpu);
+	}
+	
+	if (newGpuCycles > GPU_CYCLES_PER_FRAME) {
+		// Reset vblank interrupt status
+		gpu->vblankTriggered = false;
+
+		// Check if we are on odd or even frame
+		int32_t frameTraversals = newGpuCycles / GPU_CYCLES_PER_FRAME;
+		gpu->oddOrEven = frameTraversals % 2 == 1 ?
+				~gpu->oddOrEven & 0x1 : gpu->oddOrEven;
+		
+		// Modify newGpuCycles to reflect we are in a subsequent frame
+		newGpuCycles %= GPU_CYCLES_PER_FRAME;
 	}
 
+	// Store state
+	gpu->gpuCycles = newGpuCycles;
 	gpu->cpuCycles = 0;
 }
 
