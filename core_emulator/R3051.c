@@ -3103,6 +3103,7 @@ static int32_t R3051_readDataValue(R3051 *cpu, int32_t width, int32_t address)
 				break;
 		}
 		cpu->cycles += delayCycles;
+		cpu->totalCycles += delayCycles;
 
 		// End transaction
 	}
@@ -3166,6 +3167,10 @@ static int64_t R3051_readInstructionWord(R3051 *cpu, int32_t address,
 						cpu->system,
 						physicalAddress
 						);
+				cpu->totalCycles += SystemInterlink_howManyStallCycles(
+						cpu->system,
+						physicalAddress
+						);
 				InstructionCache_refillLine(
 						&cpu->instructionCache,
 						&cpu->sccp,
@@ -3191,6 +3196,10 @@ static int64_t R3051_readInstructionWord(R3051 *cpu, int32_t address,
 			// Begin transaction
 
 			cpu->cycles += SystemInterlink_howManyStallCycles(
+					cpu->system,
+					physicalAddress
+					);
+			cpu->totalCycles += SystemInterlink_howManyStallCycles(
 					cpu->system,
 					physicalAddress
 					);
@@ -3356,6 +3365,7 @@ static void R3051_writeDataValue(R3051 *cpu, int32_t width, int32_t address,
 				break;
 		}
 		cpu->cycles += delayCycles;
+		cpu->totalCycles += delayCycles;
 
 		// End transaction
 	}

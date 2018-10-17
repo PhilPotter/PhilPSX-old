@@ -3,3 +3,4 @@ dist/*
 build/*
 Makefile
 .dep.inc
+philpsx_emulator_thread.log

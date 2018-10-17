@@ -128,7 +128,7 @@ static void GPU_writeDMABuffer(GPU *gpu, int32_t index, int8_t value);
  * the PlayStation GPU.
  */
 struct GPU {
-	
+
 	// This list stores line parameters for the line rendering commands
 	ArrayList *lineParameters;
 
@@ -3377,7 +3377,7 @@ static GLuint GPU_createShaderProgram(GPU *gpu, const char *name,
  * this work on the rendering thread.
  */
 static void GPU_displayScreen(GPU *gpu)
-{
+{	
 	// Perform draw on GL thread, making sure to set pointers
 	GpuCommand displayScreen;
 	displayScreen.functionPointer = &GPU_displayScreen_implementation;
