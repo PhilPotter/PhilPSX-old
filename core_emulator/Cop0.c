@@ -3,7 +3,7 @@
  * class. The struct definition itself can be found inside R3051.c, as it is
  * intended to be contained as a struct inside the main R3051 struct.
  * 
- * Cop0.c - Copyright Phillip Potter, 2018
+ * Cop0.c - Copyright Phillip Potter, 2020
  */
 #include <stdint.h>
 #include <stdbool.h>

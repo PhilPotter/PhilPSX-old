@@ -3,7 +3,7 @@
  * for the System Control Co-Processor of the PlayStation, and also includes
  * its public header.
  * 
- * Cop0_all.h - Copyright Phillip Potter, 2018
+ * Cop0_all.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_COP0_ALL_HEADER
 #define PHILPSX_COP0_ALL_HEADER

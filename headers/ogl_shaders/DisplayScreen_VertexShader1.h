@@ -2,7 +2,7 @@
  * This header file provides the OpenGL vertex shader for the DisplayScreen
  * routine.
  * 
- * DisplayScreen_VertexShader1.h - Copyright Phillip Potter, 2018
+ * DisplayScreen_VertexShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_DISPLAYSCREEN_VERTEXSHADER1
 #define PHILPSX_DISPLAYSCREEN_VERTEXSHADER1

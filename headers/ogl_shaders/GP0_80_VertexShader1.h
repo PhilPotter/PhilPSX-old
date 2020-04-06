@@ -2,7 +2,7 @@
  * This header file provides the first OpenGL vertex shader for the GP0_80
  * routine.
  * 
- * GP0_80_VertexShader1.h - Copyright Phillip Potter, 2018
+ * GP0_80_VertexShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_GP0_80_VERTEXSHADER1
 #define PHILPSX_GP0_80_VERTEXSHADER1

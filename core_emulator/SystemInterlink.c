@@ -2,7 +2,7 @@
  * This C file models a system interlink that ties RAM, CPU and other components
  * together.
  * 
- * SystemInterlink.c - Copyright Phillip Potter, 2018
+ * SystemInterlink.c - Copyright Phillip Potter, 2020
  */
 #include <stdint.h>
 #include <stdbool.h>

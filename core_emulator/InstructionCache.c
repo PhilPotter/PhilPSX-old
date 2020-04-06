@@ -1,7 +1,7 @@
 /*
  * This C file models the instruction cache of the R3051 processor as a class.
  * 
- * InstructionCache.c - Copyright Phillip Potter, 2018
+ * InstructionCache.c - Copyright Phillip Potter, 2020
  */
 #include <stdint.h>
 #include <stdbool.h>

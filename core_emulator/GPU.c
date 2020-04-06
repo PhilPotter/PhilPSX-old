@@ -3,7 +3,7 @@
  * function calls are unchecked for errors under the assumption that for this
  * use case, they cannot fail.
  * 
- * GPU.c - Copyright Phillip Potter, 2018
+ * GPU.c - Copyright Phillip Potter, 2020
  */
 #include <stdbool.h>
 #include <stdint.h>

@@ -2,7 +2,7 @@
  * This C file models the controllers and memory cards of the PlayStation
  * hardware as a class.
  * 
- * ControllerIO.c - Copyright Phillip Potter, 2018
+ * ControllerIO.c - Copyright Phillip Potter, 2020
  */
 #include <stdint.h>
 #include <stdio.h>

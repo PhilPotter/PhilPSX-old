@@ -2,7 +2,7 @@
  * This header file provides the OpenGL vertex shader for the
  * TexturedRectangle routine.
  * 
- * TexturedRectangle_VertexShader1.h - Copyright Phillip Potter, 2018
+ * TexturedRectangle_VertexShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_TEXTUREDRECTANGLE_VERTEXSHADER1
 #define PHILPSX_TEXTUREDRECTANGLE_VERTEXSHADER1

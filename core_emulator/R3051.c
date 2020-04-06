@@ -1,7 +1,7 @@
 /*
  * This C file models the MIPS R3051 processor of the PlayStation as a class.
  * 
- * R3051.c - Copyright Phillip Potter, 2018
+ * R3051.c - Copyright Phillip Potter, 2020
  */
 #include <stdint.h>
 #include <stdbool.h>

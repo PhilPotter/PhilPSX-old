@@ -4,7 +4,7 @@
  * state required for it to execute, and then submit it to a queue where it
  * can be executed on the rendering thread.
  * 
- * PhilPSXCommand.h - Copyright Phillip Potter, 2018
+ * PhilPSXCommand.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_GPUCOMMAND
 #define PHILPSX_GPUCOMMAND

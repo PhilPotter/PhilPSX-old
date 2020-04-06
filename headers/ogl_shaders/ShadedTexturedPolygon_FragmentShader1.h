@@ -2,7 +2,7 @@
  * This header file provides the OpenGL fragment shader for the
  * ShadedTexturedPolygon routine.
  * 
- * ShadedTexturedPolygon_FragmentShader1.h - Copyright Phillip Potter, 2018
+ * ShadedTexturedPolygon_FragmentShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_SHADEDTEXTUREDPOLYGON_FRAGMENTSHADER1
 #define PHILPSX_SHADEDTEXTUREDPOLYGON_FRAGMENTSHADER1

@@ -2,7 +2,7 @@
  * This header file provides the public API for the Geometry Transformation
  * Engine of the PlayStation.
  * 
- * Cop2_public.h - Copyright Phillip Potter, 2018
+ * Cop2_public.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_COP2_PUBLIC_HEADER
 #define PHILPSX_COP2_PUBLIC_HEADER

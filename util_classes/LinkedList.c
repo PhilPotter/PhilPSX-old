@@ -6,7 +6,7 @@
  * not checked for, as it is assumed they cannot occur under the use case for
  * which this linked list was written.
  * 
- * LinkedList.c - Copyright Phillip Potter, 2018
+ * LinkedList.c - Copyright Phillip Potter, 2020
  */
 #include <stdbool.h>
 #include <stdint.h>

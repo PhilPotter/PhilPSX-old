@@ -2,7 +2,7 @@
  * This header file provides the public API for the CD-ROM module of the
  * PlayStation.
  * 
- * CDROMDrive.h - Copyright Phillip Potter, 2018
+ * CDROMDrive.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_CDROMDRIVE_HEADER
 #define PHILPSX_CDROMDRIVE_HEADER

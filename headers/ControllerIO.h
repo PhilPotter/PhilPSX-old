@@ -3,7 +3,7 @@
  * of the PlayStation. At the moment, most functionality is stubbed out/not
  * implemented.
  * 
- * ControllerIO.h - Copyright Phillip Potter, 2018
+ * ControllerIO.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_CONTROLLERIO_HEADER
 #define PHILPSX_CONTROLLERIO_HEADER

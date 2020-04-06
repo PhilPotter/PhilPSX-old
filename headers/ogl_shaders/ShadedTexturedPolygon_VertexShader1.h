@@ -2,7 +2,7 @@
  * This header file provides the OpenGL vertex shader for the
  * ShadedTexturedPolygon routine.
  * 
- * ShadedTexturedPolygon_VertexShader1.h - Copyright Phillip Potter, 2018
+ * ShadedTexturedPolygon_VertexShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_SHADEDTEXTUREDPOLYGON_VERTEXSHADER1
 #define PHILPSX_SHADEDTEXTUREDPOLYGON_VERTEXSHADER1

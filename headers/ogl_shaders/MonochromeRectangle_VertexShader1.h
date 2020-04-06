@@ -2,7 +2,7 @@
  * This header file provides the OpenGL vertex shader for the
  * MonochromeRectangle routine.
  * 
- * MonochromeRectangle_VertexShader1.h - Copyright Phillip Potter, 2018
+ * MonochromeRectangle_VertexShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_MONOCHROMERECTANGLE_VERTEXSHADER1
 #define PHILPSX_MONOCHROMERECTANGLE_VERTEXSHADER1

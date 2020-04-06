@@ -5,7 +5,7 @@
  * channel as no software actually uses it, but the constant is defined for
  * consistency.
  * 
- * DMAArbiter.c - Copyright Phillip Potter, 2018
+ * DMAArbiter.c - Copyright Phillip Potter, 2020
  */
 #include <stdint.h>
 #include <stdio.h>

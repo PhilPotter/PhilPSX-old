@@ -2,7 +2,7 @@
  * This header file provides the public API for the MIPS R3051 implementation
  * of PhilPSX.
  * 
- * R3051.h - Copyright Phillip Potter, 2018
+ * R3051.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_R3051_HEADER
 #define PHILPSX_R3051_HEADER

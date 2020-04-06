@@ -2,7 +2,7 @@
  * This header file provides the OpenGL fragment shader for the
  * MonochromeRectangle routine.
  * 
- * MonochromeRectangle_FragmentShader1.h - Copyright Phillip Potter, 2018
+ * MonochromeRectangle_FragmentShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_MONOCHROMERECTANGLE_FRAGMENTSHADER1
 #define PHILPSX_MONOCHROMERECTANGLE_FRAGMENTSHADER1

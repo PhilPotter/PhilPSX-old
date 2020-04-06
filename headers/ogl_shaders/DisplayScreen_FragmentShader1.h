@@ -2,7 +2,7 @@
  * This header file provides the OpenGL fragment shader for the DisplayScreen
  * routine.
  * 
- * DisplayScreen_FragmentShader1.h - Copyright Phillip Potter, 2018
+ * DisplayScreen_FragmentShader1.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_DISPLAYSCREEN_FRAGMENTSHADER1
 #define PHILPSX_DISPLAYSCREEN_FRAGMENTSHADER1

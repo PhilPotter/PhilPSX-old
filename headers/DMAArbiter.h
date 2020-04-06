@@ -2,7 +2,7 @@
  * This header file provides the public API for the class of PhilPSX that
  * handles the DMA transfers of the PlayStation hardware.
  * 
- * DMAArbiter.h - Copyright Phillip Potter, 2018
+ * DMAArbiter.h - Copyright Phillip Potter, 2020
  */
 #ifndef PHILPSX_DMAARBITER_HEADER
 #define PHILPSX_DMAARBITER_HEADER

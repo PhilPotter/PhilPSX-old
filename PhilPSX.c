@@ -3,7 +3,7 @@
  * are checked for errors, as it is assumed all others can't fail given the
  * use cases of this code.
  * 
- * PhilPSX.c - Copyright Phillip Potter, 2018
+ * PhilPSX.c - Copyright Phillip Potter, 2020
  */
 
 /* Included for profiling purposes*/

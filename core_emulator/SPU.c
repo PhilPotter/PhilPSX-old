@@ -1,7 +1,7 @@
 /*
  * This C file models the SPU (sound chip) of the PlayStation as a class.
  * 
- * SPU.c - Copyright Phillip Potter, 2018
+ * SPU.c - Copyright Phillip Potter, 2020
  */
 #include <stdint.h>
 #include <stdio.h>
