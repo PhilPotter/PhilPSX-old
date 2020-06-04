@@ -2,7 +2,7 @@
  * This C file models the Geometry Transformation Engine of the PlayStation as a
  * class.
  * 
- * Cop2.c - Copyright Phillip Potter, 2020
+ * Cop2.c - Copyright Phillip Potter, 2020, under GPLv3
  */
 #include <stdint.h>
 #include <stdbool.h>

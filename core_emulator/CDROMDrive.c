@@ -1,7 +1,7 @@
 /*
  * This C file models the CD-ROM module of the PlayStation hardware as a class.
  * 
- * CDROMDrive.c - Copyright Phillip Potter, 2020
+ * CDROMDrive.c - Copyright Phillip Potter, 2020, under GPLv3
  */
 #include <stdint.h>
 #include <stdio.h>

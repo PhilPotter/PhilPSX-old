@@ -2,7 +2,7 @@
  * This header file contains math utility functions for things like logical
  * right shift that aren't available out-of-the-box in C.
  * 
- * math_utils.h - Copyright Phillip Potter, 2020
+ * math_utils.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_MATH_UTILS_HEADER
 #define PHILPSX_MATH_UTILS_HEADER

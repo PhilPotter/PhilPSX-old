@@ -2,7 +2,7 @@
  * This header file provides the OpenGL fragment shader for the GP0_A0
  * routine.
  * 
- * GP0_A0_FragmentShader1.h - Copyright Phillip Potter, 2020
+ * GP0_A0_FragmentShader1.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_GP0_A0_FRAGMENTSHADER1
 #define PHILPSX_GP0_A0_FRAGMENTSHADER1

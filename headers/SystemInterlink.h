@@ -1,7 +1,7 @@
 /*
  * This header file provides the public API for the system interlink class.
  * 
- * Components.h - Copyright Phillip Potter, 2020
+ * Components.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_SYSTEM_INTERLINK_HEADER
 #define PHILPSX_SYSTEM_INTERLINK_HEADER

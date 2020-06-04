@@ -1,7 +1,7 @@
 /*
  * This C file models the CD of the PlayStation as a class.
  * 
- * CD.c - Copyright Phillip Potter, 2020
+ * CD.c - Copyright Phillip Potter, 2020, under GPLv3
  */
 #include <stdbool.h>
 #include <stdint.h>

@@ -2,7 +2,7 @@
  * This header file provides the second OpenGL fragment shader for the GP0_80
  * routine.
  * 
- * GP0_80_FragmentShader2.h - Copyright Phillip Potter, 2020
+ * GP0_80_FragmentShader2.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_GP0_80_FRAGMENTSHADER2
 #define PHILPSX_GP0_80_FRAGMENTSHADER2

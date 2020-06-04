@@ -2,7 +2,7 @@
  * This header file provides the OpenGL fragment shader for the AnyLine
  * routine.
  * 
- * AnyLine_FragmentShader1.h - Copyright Phillip Potter, 2020
+ * AnyLine_FragmentShader1.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_ANYLINE_FRAGMENTSHADER1
 #define PHILPSX_ANYLINE_FRAGMENTSHADER1

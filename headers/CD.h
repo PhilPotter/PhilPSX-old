@@ -2,7 +2,7 @@
  * This header file provides the public API for the CD class, which models and
  * abstracts handling of Compact Discs for the emulator.
  * 
- * CD.h - Copyright Phillip Potter, 2020
+ * CD.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_CD_HEADER
 #define PHILPSX_CD_HEADER

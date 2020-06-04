@@ -2,7 +2,7 @@
  * This header file provides the public API for the instruction cache of the
  * R3051 processor.
  * 
- * InstructionCache_public.h - Copyright Phillip Potter, 2020
+ * InstructionCache_public.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_INSTRUCTION_CACHE_PUBLIC_HEADER
 #define PHILPSX_INSTRUCTION_CACHE_PUBLIC_HEADER

@@ -2,7 +2,7 @@
  * This header file provides the OpenGL vertex shader for the AnyLine
  * routine.
  * 
- * AnyLine_VertexShader1.h - Copyright Phillip Potter, 2020
+ * AnyLine_VertexShader1.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_ANYLINE_VERTEXSHADER1
 #define PHILPSX_ANYLINE_VERTEXSHADER1

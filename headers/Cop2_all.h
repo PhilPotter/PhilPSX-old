@@ -3,7 +3,7 @@
  * the Geometry Transformation Engine of the PlayStation, and also includes its
  * public header.
  * 
- * Cop2_all.h - Copyright Phillip Potter, 2020
+ * Cop2_all.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_COP2_HEADER
 #define PHILPSX_COP2_HEADER

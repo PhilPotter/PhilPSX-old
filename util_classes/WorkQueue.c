@@ -9,7 +9,7 @@
  * and therefore errors are not checked with these function calls, to simplify
  * the code and make it more readable.
  * 
- * WorkQueue.c - Copyright Phillip Potter, 2020
+ * WorkQueue.c - Copyright Phillip Potter, 2020, under GPLv3
  */
 #include <stdio.h>
 #include <stdlib.h>

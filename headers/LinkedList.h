@@ -11,7 +11,7 @@
  * The linked list is backed by individual nodes which refer to each other, one
  * to the next.
  * 
- * LinkedList.h - Copyright Phillip Potter, 2020
+ * LinkedList.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_LINKEDLIST_HEADER
 #define PHILPSX_LINKEDLIST_HEADER

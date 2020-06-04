@@ -2,7 +2,7 @@
  * This header file provides the public API for the GPU (graphics chip) of the
  * PlayStation.
  * 
- * GPU.h - Copyright Phillip Potter, 2020
+ * GPU.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_GPU_HEADER
 #define PHILPSX_GPU_HEADER

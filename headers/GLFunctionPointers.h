@@ -3,7 +3,7 @@
  * various OpenGL function pointers that we will require to send commands
  * to the (actual) GPU.
  * 
- * GLFunctionPointers.h - Copyright Phillip Potter, 2020
+ * GLFunctionPointers.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_GLFUNCTIONPOINTERS_HEADER
 #define PHILPSX_GLFUNCTIONPOINTERS_HEADER

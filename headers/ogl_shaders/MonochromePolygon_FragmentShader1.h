@@ -2,7 +2,7 @@
  * This header file provides the OpenGL fragment shader for the
  * MonochromePolygon routine.
  * 
- * MonochromePolygon_FragmentShader1.h - Copyright Phillip Potter, 2020
+ * MonochromePolygon_FragmentShader1.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_MONOCHROMEPOLYGON_FRAGMENTSHADER1
 #define PHILPSX_MONOCHROMEPOLYGON_FRAGMENTSHADER1

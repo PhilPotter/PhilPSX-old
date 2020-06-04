@@ -1,7 +1,7 @@
 /*
  * This header file contains component IDs for use with each component.
  * 
- * Components.h - Copyright Phillip Potter, 2020
+ * Components.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_COMPONENTS_HEADER
 #define PHILPSX_COMPONENTS_HEADER

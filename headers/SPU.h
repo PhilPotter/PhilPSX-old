@@ -3,7 +3,7 @@
  * PlayStation. At the moment, most functionality is stubbed out/not
  * implemented.
  * 
- * SPU.h - Copyright Phillip Potter, 2020
+ * SPU.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_SPU_HEADER
 #define PHILPSX_SPU_HEADER

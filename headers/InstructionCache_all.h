@@ -3,7 +3,7 @@
  * for the instruction cache of the R3051 processor, and also includes
  * its public header.
  * 
- * InstructionCache_all.h - Copyright Phillip Potter, 2020
+ * InstructionCache_all.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_INSTRUCTION_CACHE_ALL_HEADER
 #define PHILPSX_INSTRUCTION_CACHE_ALL_HEADER

@@ -11,7 +11,7 @@
  * The array list is backed by a malloc'ed array which is grown and shrunk
  * according to certain metrics.
  * 
- * ArrayList.h - Copyright Phillip Potter, 2020
+ * ArrayList.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_ARRAYLIST_HEADER
 #define PHILPSX_ARRAYLIST_HEADER

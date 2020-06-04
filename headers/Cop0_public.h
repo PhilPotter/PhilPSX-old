@@ -2,7 +2,7 @@
  * This header file provides the public API for the System Control Co-Processor
  * of the PlayStation.
  * 
- * Cop0_public.h - Copyright Phillip Potter, 2020
+ * Cop0_public.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_COP0_PUBLIC_HEADER
 #define PHILPSX_COP0_PUBLIC_HEADER

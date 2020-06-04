@@ -2,7 +2,7 @@
  * This header file provides the OpenGL vertex shader for the
  * MonochromePolygon routine.
  * 
- * MonochromePolygon_VertexShader1.h - Copyright Phillip Potter, 2020
+ * MonochromePolygon_VertexShader1.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_MONOCHROMEPOLYGON_VERTEXSHADER1
 #define PHILPSX_MONOCHROMEPOLYGON_VERTEXSHADER1

@@ -2,7 +2,7 @@
  * This C file takes care of setting a struct full of all the OpenGL function
  * pointers the emulator uses to make GL calls.
  * 
- * GLFunctionPointers.c - Copyright Phillip Potter, 2020
+ * GLFunctionPointers.c - Copyright Phillip Potter, 2020, under GPLv3
  */
 #include <stdbool.h>
 #include <GL/gl.h>

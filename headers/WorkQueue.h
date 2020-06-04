@@ -3,7 +3,7 @@
  * submission of items from the emulator thread in a thread-safe manner, which
  * can then be executed by the rendering thread. 
  * 
- * WorkQueue.h - Copyright Phillip Potter, 2020
+ * WorkQueue.h - Copyright Phillip Potter, 2020, under GPLv3
  */
 #ifndef PHILPSX_WORKQUEUE_HEADER
 #define PHILPSX_WORKQUEUE_HEADER
