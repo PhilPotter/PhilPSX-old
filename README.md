@@ -15,11 +15,13 @@ Please note that this is my own code, and there is no association or endorsement
 ## How to build
 
 For now, due to lack of a build system, manual invocation of GCC is necessary. Make sure SDL2 and gperftools development packages are installed for your distro (Linux-only currently), then run:
+
 ``
 gcc -g -pthread -lSDL2 -lprofiler -o PhilPSX `find . -name \*.c`
 ``
 
 To execute the emulator, you must provide a flag for the BIOS image and a flag for the cue file of the CD image:
+
 ``
 ./PhilPSX -bios <bios file> -cd <cue file>
 ``
