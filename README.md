@@ -1,3 +1,5 @@
+This repository is now archived.
+
 # PhilPSX
 
 This is a PlayStation 1 emulator that I originally wrote in Java as a final-year university project, ending in August 2016. I decided to port the code to C afterwards and see how far I could take it in terms of functionality. The original Java version had a reasonably functional graphical debugger, and the aim is to implement the same in this version. The code has gathered dust on my machine for some time since 2018, but I've decided to start working on it again. Although at present it is very limited, I can't tell you the joy I felt when I first got a commercial PS1 BIOS to boot with PhilPSX after all the late nights of coding :smiley:. I would hate for this work to go to waste, and I have a great deal of nostalgia for the PS1 era, so I want to finish what I started (or at least bring it further).
